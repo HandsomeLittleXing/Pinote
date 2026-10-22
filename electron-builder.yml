@@ -1,0 +1,29 @@
+appId: com.stickernote.app
+productName: StickerNote
+directories:
+  buildResources: resources
+  output: release
+files:
+  - out/**/*
+  - "!out/renderer/**/*"
+extraResources:
+  - from: out/renderer
+    to: renderer
+  - from: resources/icon.ico
+    to: icon.ico
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch: x64
+  artifactName: "电脑便签-Setup-${version}.${ext}"
+  forceCodeSigning: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: false
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  shortcutName: 电脑便签
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  menuCategory: 电脑便签

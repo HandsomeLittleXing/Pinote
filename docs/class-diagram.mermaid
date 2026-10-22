@@ -1,0 +1,130 @@
+classDiagram
+    direction TB
+
+    class AppMain {
+        -stickerStore: StickerStore
+        -windowManager: StickerWindowManager
+        -trayManager: TrayManager
+        -shortcutManager: ShortcutManager
+        -reminderScheduler: ReminderScheduler
+        +main(): void
+        +onReady(): void
+        +onAllWindowsClosed(): void
+    }
+
+    class StickerStore {
+        -store: ElectronStore
+        +getAllStickers(): Sticker[]
+        +getStickerById(id): Sticker|null
+        +createSticker(partial?): Sticker
+        +updateSticker(id, partial): Sticker
+        +deleteSticker(id): void
+        +getSettings(): AppSettings
+        +setSettings(settings): void
+        +exportData(): object
+        +importData(data, mode): void
+    }
+
+    class StickerWindowManager {
+        -windows: Map~string,BrowserWindow~
+        -listPanelWindow: BrowserWindow|null
+        +createStickerWindow(sticker): BrowserWindow
+        +hideStickerWindow(id): void
+        +showStickerWindow(id): void
+        +closeStickerWindow(id): void
+        +focusStickerWindow(id): void
+        +setStickerAlwaysOnTop(id, pinned): void
+        +setStickerOpacity(id, opacity): void
+        +createListPanelWindow(): BrowserWindow
+        +restoreAllWindows(): void
+        +getWindowBounds(id): WindowState
+    }
+
+    class TrayManager {
+        -tray: Tray
+        +createTray(): void
+        +updateContextMenu(): void
+        +destroy(): void
+    }
+
+    class ShortcutManager {
+        -settings: AppSettings
+        +registerAll(): void
+        +unregisterAll(): void
+        +updateShortcuts(settings): void
+    }
+
+    class ReminderScheduler {
+        -timers: Map~string,NodeJS.Timeout~
+        +scheduleAllReminders(): void
+        +scheduleReminder(sticker): void
+        +cancelReminder(id): void
+        +sendNotification(sticker): void
+    }
+
+    class IpcHandlerRegistry {
+        -store: StickerStore
+        -windowManager: StickerWindowManager
+        +registerAll(): void
+        -handleStickerCreate(event, data): Sticker
+        -handleStickerUpdate(event, data): Sticker
+        -handleStickerDelete(event, id): void
+        -handleWindowSaveState(event, data): void
+        -handleSettingsGet(event): AppSettings
+        -handleSettingsSet(event, settings): void
+    }
+
+    class PreloadAPI {
+        +sticker: StickerAPI
+        +window: WindowAPI
+        +settings: SettingsAPI
+        +theme: ThemeAPI
+        +data: DataAPI
+    }
+
+    class StickerAPI {
+        +create(partial?): Promise~Sticker~
+        +getAll(): Promise~Sticker[]~
+        +getById(id): Promise~Sticker~
+        +update(id, partial): Promise~Sticker~
+        +delete(id): Promise~void~
+        +toggleVisible(id): Promise~Sticker~
+        +togglePin(id): Promise~Sticker~
+        +setColor(id, color): Promise~Sticker~
+        +setOpacity(id, opacity): Promise~Sticker~
+        +setTags(id, tags): Promise~Sticker~
+        +setReminder(id, reminder): Promise~Sticker~
+    }
+
+    class WindowAPI {
+        +saveState(state): Promise~void~
+        +close(): Promise~void~
+    }
+
+    class SettingsAPI {
+        +get(): Promise~AppSettings~
+        +set(settings): Promise~void~
+    }
+
+    class ThemeAPI {
+        +getCurrent(): Promise~string~
+        +onChanged(callback): void
+    }
+
+    class DataAPI {
+        +export(): Promise~object~
+        +import(data, mode): Promise~void~
+    }
+
+    AppMain --> StickerStore : 拥有
+    AppMain --> StickerWindowManager : 拥有
+    AppMain --> TrayManager : 拥有
+    AppMain --> ShortcutManager : 拥有
+    AppMain --> ReminderScheduler : 拥有
+    IpcHandlerRegistry --> StickerStore : 使用
+    IpcHandlerRegistry --> StickerWindowManager : 使用
+    PreloadAPI --> StickerAPI : 包含
+    PreloadAPI --> WindowAPI : 包含
+    PreloadAPI --> SettingsAPI : 包含
+    PreloadAPI --> ThemeAPI : 包含
+    PreloadAPI --> DataAPI : 包含

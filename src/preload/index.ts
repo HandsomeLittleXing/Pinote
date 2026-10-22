@@ -1,0 +1,96 @@
+import { contextBridge, ipcRenderer } from 'electron';
+import { IPC } from '../shared/ipc-channels';
+import type {
+  Sticker,
+  StickerColor,
+  WindowState,
+  AppSettings,
+  ExportData,
+  ImportMode,
+  PreloadAPI,
+} from '../shared/types';
+
+const api: PreloadAPI = {
+  sticker: {
+    create(partial?: Partial<Sticker>): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_CREATE, partial);
+    },
+    getAll(): Promise<Sticker[]> {
+      return ipcRenderer.invoke(IPC.STICKER_GET_ALL);
+    },
+    getById(id: string): Promise<Sticker | null> {
+      return ipcRenderer.invoke(IPC.STICKER_GET_BY_ID, id);
+    },
+    update(id: string, partial: Partial<Sticker>): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_UPDATE, id, partial);
+    },
+    delete(id: string): Promise<void> {
+      return ipcRenderer.invoke(IPC.STICKER_DELETE, id);
+    },
+    toggleVisible(id: string): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_TOGGLE_VISIBLE, id);
+    },
+    togglePin(id: string): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_TOGGLE_PIN, id);
+    },
+    setColor(id: string, color: StickerColor): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_SET_COLOR, id, color);
+    },
+    setOpacity(id: string, opacity: number): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_SET_OPACITY, id, opacity);
+    },
+    setTags(id: string, tags: string[]): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_SET_TAGS, id, tags);
+    },
+    setReminder(id: string, reminder: string | null): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_SET_REMINDER, id, reminder);
+    },
+    onListChanged(callback: () => void): () => void {
+      const handler = () => callback();
+      ipcRenderer.on(IPC.STICKER_LIST_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.STICKER_LIST_CHANGED, handler);
+      };
+    },
+  },
+  window: {
+    saveState(state: WindowState): Promise<void> {
+      return ipcRenderer.invoke(IPC.WINDOW_SAVE_STATE, state);
+    },
+    close(): Promise<void> {
+      return ipcRenderer.invoke(IPC.WINDOW_CLOSE);
+    },
+  },
+  settings: {
+    get(): Promise<AppSettings> {
+      return ipcRenderer.invoke(IPC.SETTINGS_GET);
+    },
+    set(settings: Partial<AppSettings>): Promise<void> {
+      return ipcRenderer.invoke(IPC.SETTINGS_SET, settings);
+    },
+  },
+  theme: {
+    getCurrent(): Promise<string> {
+      return ipcRenderer.invoke(IPC.THEME_GET_CURRENT);
+    },
+    onChanged(callback: (theme: string) => void): () => void {
+      const handler = (_event: any, theme: string) => {
+        callback(theme);
+      };
+      ipcRenderer.on(IPC.THEME_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.THEME_CHANGED, handler);
+      };
+    },
+  },
+  data: {
+    export(): Promise<ExportData> {
+      return ipcRenderer.invoke(IPC.DATA_EXPORT);
+    },
+    import(data: ExportData, mode: ImportMode): Promise<void> {
+      return ipcRenderer.invoke(IPC.DATA_IMPORT, data, mode);
+    },
+  },
+};
+
+contextBridge.exposeInMainWorld('api', api);

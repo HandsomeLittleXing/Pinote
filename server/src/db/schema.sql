@@ -1,0 +1,62 @@
+-- StickerNote 云同步数据库结构
+-- 独立数据库：sticker_note_sync（不复用 stock_analysis）
+
+CREATE DATABASE IF NOT EXISTS `sticker_note_sync`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+USE `sticker_note_sync`;
+
+-- 同步空间：相当于一个无账号体系的"轻量用户"，由桌面端首次启动时创建
+CREATE TABLE IF NOT EXISTS `sync_spaces` (
+  `id` CHAR(36) NOT NULL PRIMARY KEY,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 已配对设备：token 只存哈希，不存明文
+CREATE TABLE IF NOT EXISTS `devices` (
+  `id` CHAR(36) NOT NULL PRIMARY KEY,
+  `sync_space_id` CHAR(36) NOT NULL,
+  `token_hash` CHAR(64) NOT NULL,
+  `device_name` VARCHAR(100) NOT NULL,
+  `platform` VARCHAR(20) NOT NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `last_seen_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY `uq_devices_token_hash` (`token_hash`),
+  KEY `idx_devices_sync_space` (`sync_space_id`),
+  CONSTRAINT `fk_devices_sync_space` FOREIGN KEY (`sync_space_id`)
+    REFERENCES `sync_spaces` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 配对码：短期有效，单次兑换
+CREATE TABLE IF NOT EXISTS `pairing_codes` (
+  `code` CHAR(6) NOT NULL PRIMARY KEY,
+  `sync_space_id` CHAR(36) NOT NULL,
+  `expires_at` DATETIME(3) NOT NULL,
+  `redeemed_at` DATETIME(3) NULL,
+  `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  KEY `idx_pairing_sync_space` (`sync_space_id`),
+  CONSTRAINT `fk_pairing_sync_space` FOREIGN KEY (`sync_space_id`)
+    REFERENCES `sync_spaces` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 便签数据：服务端权威副本，按 sync_space 隔离，软删除
+CREATE TABLE IF NOT EXISTS `stickers` (
+  `id` CHAR(36) NOT NULL PRIMARY KEY,
+  `sync_space_id` CHAR(36) NOT NULL,
+  `content` MEDIUMTEXT NOT NULL,
+  `color` VARCHAR(10) NOT NULL,
+  `tags` JSON NOT NULL,
+  `is_pinned` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_visible` TINYINT(1) NOT NULL DEFAULT 1,
+  `opacity` DECIMAL(3,2) NOT NULL DEFAULT 1.00,
+  `reminder` DATETIME(3) NULL,
+  `reminder_triggered` TINYINT(1) NOT NULL DEFAULT 0,
+  `window_state` JSON NULL,
+  `created_at` DATETIME(3) NOT NULL,
+  `updated_at` DATETIME(3) NOT NULL,
+  `deleted_at` DATETIME(3) NULL,
+  KEY `idx_stickers_sync_space` (`sync_space_id`),
+  KEY `idx_stickers_updated_at` (`sync_space_id`, `updated_at`),
+  CONSTRAINT `fk_stickers_sync_space` FOREIGN KEY (`sync_space_id`)
+    REFERENCES `sync_spaces` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor User
+    participant Tray as 系统托盘/快捷键
+    participant Main as Main Process (AppMain)
+    participant WM as StickerWindowManager
+    participant Store as StickerStore
+    participant Win as BrowserWindow
+    participant Renderer as Renderer (React)
+
+    User->>Tray: 点击"新建便签" / Ctrl+Alt+N
+    Tray->>Main: 触发 createSticker 事件
+    Main->>Store: createSticker({ color: defaultColor })
+    Store->>Store: 生成 UUID, 计算偏移位置
+    Store-->>Main: 返回 Sticker 对象
+    Main->>WM: createStickerWindow(sticker)
+    WM->>Win: new BrowserWindow({ frame:false, ...bounds })
+    Win->>Win: loadURL('sticker.html?id=xxx')
+    Win-->>WM: 返回 BrowserWindow 实例
+    WM->>WM: windows.set(id, win)
+    Win->>Renderer: 页面加载完成
+    Renderer->>Renderer: 从 URL params 获取 stickerId
+    Renderer->>Store: IPC: sticker:get-by-id(id)
+    Store-->>Renderer: 返回 Sticker 数据
+    Renderer->>Renderer: 初始化 Tiptap 编辑器 + 填充内容
+    Renderer->>Renderer: 应用颜色主题 / 透明度
