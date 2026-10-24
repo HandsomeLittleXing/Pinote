@@ -36,6 +36,11 @@ export function useTheme() {
     };
   }, [fetchTheme, themeMode]);
 
+  // 把暗色 class 挂到 <html>，确保 Portal 到 body 的菜单/浮层也能继承暗色 token
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
   const changeThemeMode = useCallback(async (mode: 'system' | 'light' | 'dark') => {
     try {
       await getApi().settings.set({ themeMode: mode });

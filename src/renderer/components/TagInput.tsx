@@ -1,4 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from './ui/Button';
+import { Chip } from './ui/Chip';
 
 interface TagInputProps {
   tags: string[];
@@ -40,22 +43,12 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onTagsChange }) => {
 
   return (
     <div>
-      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">标签</div>
-      <div className="flex flex-wrap gap-1.5 mb-2">
+      <div className="mb-2 text-xs font-medium text-ink-muted">标签</div>
+      <div className="mb-2 flex flex-wrap gap-1.5">
         {tags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-full text-xs group"
-          >
+          <Chip key={tag} onRemove={() => handleRemoveTag(tag)}>
             {tag}
-            <button
-              className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 font-bold leading-none opacity-60 group-hover:opacity-100 transition-opacity"
-              onClick={() => handleRemoveTag(tag)}
-              title="删除标签"
-            >
-              ×
-            </button>
-          </span>
+          </Chip>
         ))}
       </div>
       <div className="flex gap-1.5">
@@ -66,15 +59,11 @@ export const TagInput: React.FC<TagInputProps> = ({ tags, onTagsChange }) => {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="输入标签后回车"
-          className="flex-1 px-2.5 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400 transition-all"
+          className="min-w-0 flex-1 rounded-md border border-line/10 bg-surface px-2.5 py-1.5 text-xs text-ink placeholder:text-ink-subtle focus:border-transparent focus:outline-none focus:ring-1 focus:ring-accent/40"
         />
-        <button
-          onClick={handleAddTag}
-          disabled={!inputValue.trim()}
-          className="px-2.5 py-1.5 text-xs font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          添加
-        </button>
+        <Button size="sm" onClick={handleAddTag} disabled={!inputValue.trim()}>
+          <Plus size={12} /> 添加
+        </Button>
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ export interface Sticker {
   reminderTriggered: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 软删除标记，ISO 8601；非 null 表示已删除（用于跨设备同步 tombstone） */
+  deletedAt: string | null;
   windowState: WindowState;
 }
 
@@ -40,6 +42,8 @@ export interface AppSettings {
   defaultColor: StickerColor;
   themeMode: 'system' | 'light' | 'dark';
   autoStart: boolean;
+  /** 是否启用手机同步；默认 false，旧数据缺省时按是否已有 token 推断 */
+  syncEnabled: boolean;
 }
 
 /** 默认设置 */
@@ -49,6 +53,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultColor: '#FFF9C4',
   themeMode: 'system',
   autoStart: false,
+  syncEnabled: false,
 };
 
 /** 颜色主题配置 */
@@ -70,6 +75,55 @@ export interface ExportData {
   settings: AppSettings;
 }
 
+/** 云同步状态 */
+export interface SyncStatus {
+  /** 当前是否启用同步 */
+  enabled: boolean;
+  /** 是否已完成设备注册（拥有 token） */
+  linked: boolean;
+  /** 同步服务器地址 */
+  serverUrl: string;
+  /**
+   * 供手机使用的配对地址：当 serverUrl 指向本机（localhost/127.0.0.1）时，
+   * 自动替换为电脑的局域网 IP，方便本地测试时手机访问。
+   */
+  pairingServerUrl: string;
+  /** 上次成功同步时间，ISO 8601 */
+  lastSyncedAt: string | null;
+  /** 最近一次同步是否失败 */
+  lastError: string | null;
+}
+
+/** 已配对设备信息（用于设置页展示） */
+export interface SyncDevice {
+  id: string;
+  deviceName: string;
+  platform: string;
+  createdAt: string;
+  lastSeenAt: string;
+  /** 是否为当前设备 */
+  isCurrent: boolean;
+}
+
+/** 生成的配对码 */
+export interface PairingCodeResult {
+  code: string;
+  expiresAt: string;
+  ttlSeconds: number;
+}
+
+/** 预加载脚本暴露的 SyncAPI */
+export interface SyncAPI {
+  getStatus(): Promise<SyncStatus>;
+  setEnabled(enabled: boolean): Promise<SyncStatus>;
+  setServerUrl(url: string): Promise<SyncStatus>;
+  createPairingCode(): Promise<PairingCodeResult>;
+  listDevices(): Promise<SyncDevice[]>;
+  unlinkDevice(deviceId: string): Promise<void>;
+  syncNow(): Promise<SyncStatus>;
+  onStatusChanged(callback: (status: SyncStatus) => void): () => void;
+}
+
 /** 预加载脚本暴露的 StickerAPI */
 export interface StickerAPI {
   create(partial?: Partial<Sticker>): Promise<Sticker>;
@@ -84,6 +138,8 @@ export interface StickerAPI {
   setTags(id: string, tags: string[]): Promise<Sticker>;
   setReminder(id: string, reminder: string | null): Promise<Sticker>;
   onListChanged(callback: () => void): () => void;
+  /** 订阅单条便签变更（本地或同步写入），返回取消订阅函数 */
+  onChanged(callback: (id: string) => void): () => void;
 }
 
 /** 预加载脚本暴露的 WindowAPI */
@@ -117,4 +173,5 @@ export interface PreloadAPI {
   settings: SettingsAPI;
   theme: ThemeAPI;
   data: DataAPI;
+  sync: SyncAPI;
 }

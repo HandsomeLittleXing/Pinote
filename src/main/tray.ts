@@ -112,7 +112,7 @@ export class TrayManager {
           dialog.showMessageBox({
             type: 'info',
             title: '关于电脑便签',
-            message: '电脑便签 v1.1.0',
+            message: `电脑便签 v${app.getVersion()}`,
             detail: '开机即在，随手一贴\n\n快捷键：\n  Ctrl+Alt+N - 新建便签\n  Ctrl+Alt+S - 打开列表\n\n右键托盘图标查看更多选项',
           });
         },

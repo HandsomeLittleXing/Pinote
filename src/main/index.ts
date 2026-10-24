@@ -5,13 +5,16 @@ import { StickerWindowManager } from './windows';
 import { TrayManager } from './tray';
 import { ShortcutManager } from './shortcuts';
 import { ReminderScheduler } from './reminders';
+import { SyncManager } from './sync';
 import { IpcHandlerRegistry } from './ipc-handlers';
+import { IPC } from '../shared/ipc-channels';
 
 let stickerStore: StickerStore;
 let windowManager: StickerWindowManager;
 let trayManager: TrayManager;
 let shortcutManager: ShortcutManager;
 let reminderScheduler: ReminderScheduler;
+let syncManager: SyncManager;
 let ipcRegistry: IpcHandlerRegistry;
 
 function isDev(): boolean {
@@ -39,42 +42,87 @@ function broadcast(channel: string, ...args: unknown[]): void {
   });
 }
 
-app.whenReady().then(() => {
-  stickerStore = new StickerStore();
-  windowManager = new StickerWindowManager(stickerStore, getPreloadPath, getRendererUrl);
-  reminderScheduler = new ReminderScheduler(stickerStore, windowManager);
-  trayManager = new TrayManager(stickerStore, windowManager);
-  trayManager.createTray();
-  shortcutManager = new ShortcutManager(stickerStore, windowManager);
-  shortcutManager.registerAll();
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
-  ipcRegistry = new IpcHandlerRegistry(
-    stickerStore,
-    windowManager,
-    reminderScheduler,
-    shortcutManager,
-    trayManager,
-    broadcast
-  );
-  ipcRegistry.registerAll();
-
-  reminderScheduler.scheduleAllReminders();
-
-  // 监听系统主题变化
-  nativeTheme.on('updated', () => {
-    const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
-    broadcast('theme:changed', theme);
+if (!gotSingleInstanceLock) {
+  // 已有实例在运行：直接退出，避免重复托盘、重复同步定时器与并发写同一个 JSON
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (windowManager) {
+      windowManager.createListPanelWindow();
+    }
   });
 
-  windowManager.restoreAllWindows();
-});
+  app.whenReady().then(() => {
+    stickerStore = new StickerStore();
+    windowManager = new StickerWindowManager(stickerStore, getPreloadPath, getRendererUrl);
+    reminderScheduler = new ReminderScheduler(stickerStore, windowManager);
+    trayManager = new TrayManager(stickerStore, windowManager);
+    trayManager.createTray();
+    shortcutManager = new ShortcutManager(stickerStore, windowManager);
+    shortcutManager.registerAll();
+    syncManager = new SyncManager(stickerStore);
+
+    ipcRegistry = new IpcHandlerRegistry(
+      stickerStore,
+      windowManager,
+      reminderScheduler,
+      shortcutManager,
+      trayManager,
+      syncManager,
+      broadcast
+    );
+    ipcRegistry.registerAll();
+
+    reminderScheduler.scheduleAllReminders();
+
+    // 监听系统主题变化
+    nativeTheme.on('updated', () => {
+      const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+      broadcast('theme:changed', theme);
+    });
+
+    windowManager.restoreAllWindows();
+
+    // 云同步：注册设备（首次）并启动定时拉推，状态变化广播给所有窗口
+    syncManager.onStatusChanged((status) => {
+      broadcast(IPC.SYNC_STATUS_CHANGED, status);
+    });
+    // 同步拉取到远程变更时，刷新列表并驱动已打开便签窗口
+    syncManager.onDataChanged((changed) => {
+      broadcast(IPC.STICKER_LIST_CHANGED);
+
+      changed.forEach((sticker) => {
+        if (sticker.deletedAt) {
+          reminderScheduler.cancelReminder(sticker.id);
+          windowManager.closeStickerWindow(sticker.id);
+          return;
+        }
+
+        windowManager.applyRemoteState(sticker);
+
+        if (sticker.reminder && !sticker.reminderTriggered) {
+          reminderScheduler.scheduleReminder(sticker);
+        } else {
+          reminderScheduler.cancelReminder(sticker.id);
+        }
+
+        broadcast(IPC.STICKER_CHANGED, sticker.id);
+      });
+    });
+    syncManager.start().catch((err) => {
+      console.error('云同步启动失败:', err);
+    });
+  });
+}
 
 app.on('window-all-closed', () => {
   // 保持托盘运行
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (windowManager && BrowserWindow.getAllWindows().length === 0) {
     windowManager.restoreAllWindows();
   }
 });
@@ -83,6 +131,7 @@ app.on('before-quit', () => {
   shortcutManager?.unregisterAll();
   trayManager?.destroy();
   reminderScheduler?.cancelAllReminders();
+  syncManager?.stop();
 });
 
 export { stickerStore, windowManager, getPreloadPath, getRendererUrl };

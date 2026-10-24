@@ -13,6 +13,7 @@ export const IPC = {
   STICKER_SET_TAGS: 'sticker:set-tags',
   STICKER_SET_REMINDER: 'sticker:set-reminder',
   STICKER_LIST_CHANGED: 'sticker:list-changed',
+  STICKER_CHANGED: 'sticker:changed',
 
   // 窗口状态
   WINDOW_SAVE_STATE: 'window:save-state',
@@ -33,4 +34,14 @@ export const IPC = {
   // 主题
   THEME_GET_CURRENT: 'theme:get-current',
   THEME_CHANGED: 'theme:changed',
+
+  // 云同步（手机互通，桌面端连接远程同步服务）
+  SYNC_GET_STATUS: 'sync:get-status',
+  SYNC_SET_ENABLED: 'sync:set-enabled',
+  SYNC_SET_SERVER_URL: 'sync:set-server-url',
+  SYNC_CREATE_PAIRING_CODE: 'sync:create-pairing-code',
+  SYNC_LIST_DEVICES: 'sync:list-devices',
+  SYNC_UNLINK_DEVICE: 'sync:unlink-device',
+  SYNC_NOW: 'sync:now',
+  SYNC_STATUS_CHANGED: 'sync:status-changed',
 } as const;

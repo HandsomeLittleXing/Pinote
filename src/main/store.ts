@@ -22,12 +22,17 @@ export class StickerStore {
     });
   }
 
-  /** 获取所有便签 */
+  /** 获取所有未删除的便签（供 UI 使用） */
   getAllStickers(): Sticker[] {
+    return this.store.get('stickers', []).filter((s) => !s.deletedAt);
+  }
+
+  /** 获取包括已删除（tombstone）的全部便签（供同步使用） */
+  getAllStickersRaw(): Sticker[] {
     return this.store.get('stickers', []);
   }
 
-  /** 根据 ID 获取便签 */
+  /** 根据 ID 获取便签（不含已删除） */
   getStickerById(id: string): Sticker | null {
     const stickers = this.getAllStickers();
     return stickers.find((s) => s.id === id) ?? null;
@@ -37,7 +42,7 @@ export class StickerStore {
   createSticker(partial?: Partial<Sticker>): Sticker {
     const settings = this.getSettings();
     const now = new Date().toISOString();
-    const stickers = this.getAllStickers();
+    const stickers = this.getAllStickersRaw();
 
     // 计算新窗口位置：偏移 20px
     const lastSticker = stickers.length > 0 ? stickers[stickers.length - 1] : null;
@@ -47,7 +52,7 @@ export class StickerStore {
 
     const sticker: Sticker = {
       id: uuidv4(),
-      content: '',
+      content: partial?.content ?? '',
       color: partial?.color ?? settings.defaultColor,
       tags: partial?.tags ?? [],
       isPinned: partial?.isPinned ?? false,
@@ -57,6 +62,7 @@ export class StickerStore {
       reminderTriggered: false,
       createdAt: now,
       updatedAt: now,
+      deletedAt: null,
       windowState: partial?.windowState ?? {
         x: defaultX,
         y: defaultY,
@@ -70,9 +76,9 @@ export class StickerStore {
     return sticker;
   }
 
-  /** 更新便签 */
+  /** 更新便签（操作原始列表，保留已删除的 tombstone 记录） */
   updateSticker(id: string, partial: Partial<Sticker>): Sticker {
-    const stickers = this.getAllStickers();
+    const stickers = this.getAllStickersRaw();
     const index = stickers.findIndex((s) => s.id === id);
     if (index === -1) {
       throw new Error(`Sticker not found: ${id}`);
@@ -90,14 +96,16 @@ export class StickerStore {
     return updated;
   }
 
-  /** 删除便签 */
+  /**
+   * 软删除便签：保留 tombstone 记录（deletedAt 置位）以便同步到其他设备，
+   * 而非直接从本地列表移除。
+   */
   deleteSticker(id: string): void {
-    const stickers = this.getAllStickers();
-    const filtered = stickers.filter((s) => s.id !== id);
-    if (filtered.length === stickers.length) {
+    const sticker = this.getStickerById(id);
+    if (!sticker) {
       throw new Error(`Sticker not found: ${id}`);
     }
-    this.store.set('stickers', filtered);
+    this.updateSticker(id, { deletedAt: new Date().toISOString(), isVisible: false });
   }
 
   /** 获取全局设置 */
@@ -155,5 +163,20 @@ export class StickerStore {
       s.tags.forEach((tag) => tagSet.add(tag));
     });
     return Array.from(tagSet).sort();
+  }
+
+  /**
+   * 写入一条来自远程同步的便签记录（直接覆盖，不再比较 updatedAt —
+   * 调用方 SyncManager 已经做过"最后写入优先"判断）。
+   */
+  upsertFromSync(remote: Sticker): void {
+    const stickers = this.getAllStickersRaw();
+    const index = stickers.findIndex((s) => s.id === remote.id);
+    if (index === -1) {
+      stickers.push(remote);
+    } else {
+      stickers[index] = remote;
+    }
+    this.store.set('stickers', stickers);
   }
 }

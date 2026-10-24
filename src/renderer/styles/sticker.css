@@ -2,15 +2,16 @@
    StickerNote - 便签窗口专用样式
    ========================================== */
 
-/* 便签窗口容器 */
+/* 便签窗口容器：同时作为容器查询的容器 */
 .sticker-window {
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  container-type: inline-size;
 }
 
 /* ==========================================
@@ -19,95 +20,41 @@
 .unified-toolbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  min-height: 36px;
+  gap: 2px;
+  padding: 3px 8px;
+  min-height: 30px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
   -webkit-app-region: drag;
   cursor: move;
   flex-shrink: 0;
 }
 
-/* 工具栏按钮 */
-.toolbar-btn {
-  -webkit-app-region: no-drag;
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
+/* 拖拽把手 */
+.toolbar-grip {
+  display: flex;
+  width: 14px;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  font-size: 13px;
-  color: #555;
-  transition: all 0.15s ease;
+  opacity: 0.35;
   flex-shrink: 0;
 }
 
-.toolbar-btn:hover {
-  background-color: rgba(0, 0, 0, 0.08);
-  transform: scale(1.05);
+/* 悬停/聚焦时才显示的可选工具；窄窗口由容器查询隐藏 */
+.toolbar-optional {
+  display: none;
 }
 
-.toolbar-btn:active {
-  transform: scale(0.95);
+.unified-toolbar:hover .toolbar-optional,
+.unified-toolbar:focus-within .toolbar-optional {
+  display: inline-flex;
 }
 
-.toolbar-btn.active {
-  background-color: rgba(66, 133, 244, 0.18);
-  color: #4285f4;
-}
-
-.toolbar-btn.pin-active {
-  color: #4285f4;
-  background-color: rgba(66, 133, 244, 0.12);
-}
-
-.toolbar-btn.close-btn:hover {
-  background-color: #e81123;
-  color: white;
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* 工具栏分隔线 */
-.toolbar-sep {
-  width: 1px;
-  height: 18px;
-  background: rgba(0, 0, 0, 0.1);
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-
-/* 面板弹出层 */
-.panel-popover {
-  position: absolute;
-  top: 42px;
-  left: 8px;
-  z-index: 20;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-  padding: 12px;
-  animation: panelSlideIn 0.15s ease-out;
-}
-
-@keyframes panelSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@container (max-width: 239px) {
+  .toolbar-optional {
+    display: none !important;
   }
 }
 
@@ -139,19 +86,19 @@
 }
 
 /* 待办清单 */
-.sticker-editor .tiptap ul[data-type="taskList"] {
+.sticker-editor .tiptap ul[data-type='taskList'] {
   list-style: none;
   padding-left: 0;
 }
 
-.sticker-editor .tiptap ul[data-type="taskList"] li {
+.sticker-editor .tiptap ul[data-type='taskList'] li {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   margin: 5px 0;
 }
 
-.sticker-editor .tiptap ul[data-type="taskList"] li label {
+.sticker-editor .tiptap ul[data-type='taskList'] li label {
   -webkit-user-select: none;
   user-select: none;
   cursor: pointer;
@@ -159,14 +106,14 @@
   margin-top: 3px;
 }
 
-.sticker-editor .tiptap ul[data-type="taskList"] li label input[type="checkbox"] {
+.sticker-editor .tiptap ul[data-type='taskList'] li label input[type='checkbox'] {
   cursor: pointer;
   width: 15px;
   height: 15px;
-  accent-color: #4285f4;
+  accent-color: rgb(var(--accent));
 }
 
-.sticker-editor .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+.sticker-editor .tiptap ul[data-type='taskList'] li[data-checked='true'] > div > p {
   text-decoration: line-through;
   color: #999;
 }
@@ -195,18 +142,9 @@
 }
 
 .color-picker .color-dot.active {
-  border-color: #4285f4;
-  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.25);
+  border-color: rgb(var(--accent));
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.25);
   transform: scale(1.1);
-}
-
-/* 透明度警告 */
-.opacity-warning {
-  font-size: 11px;
-  color: #ff9800;
-  padding: 4px 6px;
-  background: rgba(255, 152, 0, 0.08);
-  border-radius: 4px;
 }
 
 /* ==========================================
@@ -218,31 +156,9 @@
 
 .dark .unified-toolbar {
   border-bottom-color: rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.22);
 }
 
-.dark .toolbar-btn {
-  color: #bbb;
-}
-
-.dark .toolbar-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark .toolbar-btn.active {
-  background-color: rgba(66, 133, 244, 0.25);
-  color: #82b1ff;
-}
-
-.dark .toolbar-sep {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.dark .panel-popover {
-  background: #2d2d2d;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.dark .sticker-editor .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+.dark .sticker-editor .tiptap ul[data-type='taskList'] li[data-checked='true'] > div > p {
   color: #777;
 }

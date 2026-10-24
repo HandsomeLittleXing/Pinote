@@ -8,6 +8,9 @@ import type {
   ExportData,
   ImportMode,
   PreloadAPI,
+  SyncStatus,
+  SyncDevice,
+  PairingCodeResult,
 } from '../shared/types';
 
 const api: PreloadAPI = {
@@ -52,6 +55,13 @@ const api: PreloadAPI = {
         ipcRenderer.removeListener(IPC.STICKER_LIST_CHANGED, handler);
       };
     },
+    onChanged(callback: (id: string) => void): () => void {
+      const handler = (_event: any, id: string) => callback(id);
+      ipcRenderer.on(IPC.STICKER_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.STICKER_CHANGED, handler);
+      };
+    },
   },
   window: {
     saveState(state: WindowState): Promise<void> {
@@ -89,6 +99,38 @@ const api: PreloadAPI = {
     },
     import(data: ExportData, mode: ImportMode): Promise<void> {
       return ipcRenderer.invoke(IPC.DATA_IMPORT, data, mode);
+    },
+  },
+  sync: {
+    getStatus(): Promise<SyncStatus> {
+      return ipcRenderer.invoke(IPC.SYNC_GET_STATUS);
+    },
+    setEnabled(enabled: boolean): Promise<SyncStatus> {
+      return ipcRenderer.invoke(IPC.SYNC_SET_ENABLED, enabled);
+    },
+    setServerUrl(url: string): Promise<SyncStatus> {
+      return ipcRenderer.invoke(IPC.SYNC_SET_SERVER_URL, url);
+    },
+    createPairingCode(): Promise<PairingCodeResult> {
+      return ipcRenderer.invoke(IPC.SYNC_CREATE_PAIRING_CODE);
+    },
+    listDevices(): Promise<SyncDevice[]> {
+      return ipcRenderer.invoke(IPC.SYNC_LIST_DEVICES);
+    },
+    unlinkDevice(deviceId: string): Promise<void> {
+      return ipcRenderer.invoke(IPC.SYNC_UNLINK_DEVICE, deviceId);
+    },
+    syncNow(): Promise<SyncStatus> {
+      return ipcRenderer.invoke(IPC.SYNC_NOW);
+    },
+    onStatusChanged(callback: (status: SyncStatus) => void): () => void {
+      const handler = (_event: any, status: SyncStatus) => {
+        callback(status);
+      };
+      ipcRenderer.on(IPC.SYNC_STATUS_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.SYNC_STATUS_CHANGED, handler);
+      };
     },
   },
 };

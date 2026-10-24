@@ -1,9 +1,12 @@
 import React, { useCallback, useState } from 'react';
+import { Bell, Eye, EyeOff, Pin, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
 import { ConfirmDialog } from './ConfirmDialog';
+import { IconButton } from './ui/IconButton';
 import { extractTitle } from '../utils/position';
+import { getTextColor } from '../utils/colors';
 import type { Sticker } from '../../shared/types';
 
 dayjs.extend(relativeTime);
@@ -38,69 +41,71 @@ export const StickerListItem: React.FC<StickerListItemProps> = ({
   return (
     <>
       <div
-        className="flex items-start gap-3 p-3 rounded-xl hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-sm"
+        className="group flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-3 transition-all duration-200 hover:border-line/10 hover:bg-surface hover:shadow-glass"
         onClick={() => onFocus(sticker.id)}
       >
         {/* 颜色标识 */}
         <div
-          className="w-10 h-10 rounded-lg flex-shrink-0 shadow-sm flex items-center justify-center text-sm"
-          style={{ backgroundColor: sticker.color }}
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg shadow-sm"
+          style={{
+            backgroundColor: sticker.color,
+            color: getTextColor(sticker.color, false),
+          }}
         >
-          {sticker.isPinned ? '📌' : title.charAt(0) || '📝'}
+          {sticker.isPinned ? <Pin size={14} /> : title.charAt(0)}
         </div>
 
         {/* 内容 */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-              {title}
-            </span>
-            <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo}</span>
+            <span className="truncate text-sm font-medium text-ink">{title}</span>
+            <span className="flex-shrink-0 text-xs tabular-nums text-ink-subtle">{timeAgo}</span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="mt-1 flex items-center gap-2">
             {sticker.tags.length > 0 && (
               <div className="flex gap-1">
                 {sticker.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="text-xs px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-md"
+                    className="rounded-md bg-accent/10 px-1.5 py-0.5 text-xs text-accent"
                   >
                     {tag}
                   </span>
                 ))}
                 {sticker.tags.length > 3 && (
-                  <span className="text-xs text-gray-400">+{sticker.tags.length - 3}</span>
+                  <span className="text-xs text-ink-subtle">+{sticker.tags.length - 3}</span>
                 )}
               </div>
             )}
             {sticker.reminder && !sticker.reminderTriggered && (
-              <span className="text-xs text-amber-500">⏰</span>
+              <Bell size={12} className="text-warning" />
             )}
           </div>
         </div>
 
         {/* 操作按钮 */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-          <button
-            className="p-1.5 text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
+        <div className="flex flex-shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <IconButton
+            size="sm"
+            label={sticker.isVisible ? '隐藏便签' : '显示便签'}
+            onClick={(event) => {
+              event.stopPropagation();
               onToggleVisible(sticker.id);
             }}
-            title={sticker.isVisible ? '隐藏' : '显示'}
           >
-            {sticker.isVisible ? '👁' : '🙈'}
-          </button>
-          <button
-            className="p-1.5 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
+            {sticker.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+          </IconButton>
+          <IconButton
+            size="sm"
+            label="删除便签"
+            danger
+            onClick={(event) => {
+              event.stopPropagation();
               handleDelete();
             }}
-            title="删除"
           >
-            🗑
-          </button>
+            <Trash2 size={14} />
+          </IconButton>
         </div>
       </div>
 

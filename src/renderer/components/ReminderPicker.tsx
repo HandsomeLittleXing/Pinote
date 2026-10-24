@@ -1,5 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Bell } from 'lucide-react';
 import dayjs from 'dayjs';
+import { Button } from './ui/Button';
 
 interface ReminderPickerProps {
   reminder: string | null;
@@ -14,6 +16,12 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ reminder, onRemi
   const [timeValue, setTimeValue] = useState(
     reminder ? dayjs(reminder).format('HH:mm') : '09:00'
   );
+
+  // 远程同步更新提醒后，同步面板里的日期与时间
+  useEffect(() => {
+    setDateValue(reminder ? dayjs(reminder).format('YYYY-MM-DD') : '');
+    setTimeValue(reminder ? dayjs(reminder).format('HH:mm') : '09:00');
+  }, [reminder]);
 
   const handleSetReminder = useCallback(() => {
     if (!dateValue) return;
@@ -50,57 +58,52 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ reminder, onRemi
 
   return (
     <div>
-      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">提醒时间</div>
+      <div className="mb-2 text-xs font-medium text-ink-muted">提醒时间</div>
 
       {reminder && (
-        <div className="mb-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md">
-          ⏰ {dayjs(reminder).format('YYYY-MM-DD HH:mm')}
+        <div className="mb-2 flex items-center gap-1.5 rounded-md bg-accent/10 px-2 py-1 text-xs text-accent">
+          <Bell size={12} />
+          {dayjs(reminder).format('YYYY-MM-DD HH:mm')}
         </div>
       )}
 
       {/* 快捷选项 */}
-      <div className="flex gap-1.5 mb-3">
+      <div className="mb-3 flex gap-1.5">
         {quickOptions.map((opt) => (
           <button
             key={opt.minutes}
+            type="button"
             onClick={() => handleQuick(opt.minutes)}
-            className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            className="rounded-md bg-muted px-2 py-1 text-xs text-ink-muted transition-colors hover:bg-muted/70"
           >
             {opt.label}
           </button>
         ))}
       </div>
 
-      <div className="flex gap-2 mb-3">
+      <div className="mb-3 flex flex-wrap gap-2">
         <input
           type="date"
           value={dateValue}
           onChange={(e) => setDateValue(e.target.value)}
-          className="flex-1 px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="min-w-[110px] flex-1 rounded-md border border-line/10 bg-surface px-2 py-1.5 text-xs text-ink focus:border-transparent focus:outline-none focus:ring-1 focus:ring-accent/40"
         />
         <input
           type="time"
           value={timeValue}
           onChange={(e) => setTimeValue(e.target.value)}
-          className="w-24 px-2 py-1.5 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-24 rounded-md border border-line/10 bg-surface px-2 py-1.5 text-xs text-ink focus:border-transparent focus:outline-none focus:ring-1 focus:ring-accent/40"
         />
       </div>
 
       <div className="flex gap-2">
-        <button
-          onClick={handleSetReminder}
-          disabled={!dateValue}
-          className="flex-1 px-3 py-1.5 text-xs font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
+        <Button size="sm" className="flex-1" onClick={handleSetReminder} disabled={!dateValue}>
           设置提醒
-        </button>
+        </Button>
         {reminder && (
-          <button
-            onClick={handleClearReminder}
-            className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
+          <Button size="sm" variant="secondary" onClick={handleClearReminder}>
             清除
-          </button>
+          </Button>
         )}
       </div>
     </div>

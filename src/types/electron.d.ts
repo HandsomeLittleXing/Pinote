@@ -46,6 +46,8 @@ declare module 'electron' {
   export const app: {
     isPackaged: boolean;
     getPath(name: string): string;
+    getVersion(): string;
+    requestSingleInstanceLock(): boolean;
     whenReady(): Promise<void>;
     on(event: string, listener: (...args: any[]) => void): void;
     quit(): void;

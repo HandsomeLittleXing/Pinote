@@ -12,13 +12,15 @@ interface ColorPickerProps {
 export const ColorPicker: React.FC<ColorPickerProps> = ({ currentColor, onColorChange, isDark }) => {
   return (
     <div>
-      <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">选择颜色</div>
+      <div className="mb-2 text-xs font-medium text-ink-muted">选择颜色</div>
       <div className="color-picker">
         {COLOR_THEMES.map((theme) => {
           const bg = getBackgroundColor(theme.color, isDark);
           return (
             <button
               key={theme.color}
+              type="button"
+              aria-label={theme.name}
               className={`color-dot ${currentColor === theme.color ? 'active' : ''}`}
               style={{ backgroundColor: bg }}
               onClick={() => onColorChange(theme.color)}

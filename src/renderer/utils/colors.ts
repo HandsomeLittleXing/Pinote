@@ -31,3 +31,34 @@ export function getTextColor(color: StickerColor, isDark: boolean): string {
   const theme = getColorTheme(color);
   return theme.textColor;
 }
+
+/**
+ * 将 hex 颜色转换为带透明度的 rgba。
+ * 用于让便签背景透明、但正文和图标保持不透明。
+ */
+export function withAlpha(hex: string, alpha: number): string {
+  const safeAlpha = Math.min(1, Math.max(0, alpha));
+  const normalized = hex.trim().replace(/^#/, '');
+  const full =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((char) => char + char)
+          .join('')
+      : normalized;
+
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    return `rgba(255, 255, 255, ${safeAlpha})`;
+  }
+
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+}
+
+/** 背景透明度下限 0.35，避免正文失去可读性 */
+export function clampOpacity(opacity: number): number {
+  if (!Number.isFinite(opacity)) return 1;
+  return Math.min(1, Math.max(0.35, opacity));
+}

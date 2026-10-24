@@ -1,4 +1,5 @@
 import React from 'react';
+import { Chip } from './ui/Chip';
 
 interface TagFilterProps {
   tags: string[];
@@ -10,28 +11,17 @@ interface TagFilterProps {
 export const TagFilter: React.FC<TagFilterProps> = ({ tags, selectedTag, onTagSelect }) => {
   return (
     <div className="flex flex-wrap gap-1.5">
-      <button
-        className={`px-2.5 py-1 text-xs rounded-lg transition-all ${
-          selectedTag === null
-            ? 'bg-blue-500 text-white shadow-sm'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-        }`}
-        onClick={() => onTagSelect(null)}
-      >
+      <Chip selected={selectedTag === null} onClick={() => onTagSelect(null)}>
         全部
-      </button>
+      </Chip>
       {tags.map((tag) => (
-        <button
+        <Chip
           key={tag}
-          className={`px-2.5 py-1 text-xs rounded-lg transition-all ${
-            selectedTag === tag
-              ? 'bg-blue-500 text-white shadow-sm'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-          }`}
+          selected={selectedTag === tag}
           onClick={() => onTagSelect(tag === selectedTag ? null : tag)}
         >
           {tag}
-        </button>
+        </Chip>
       ))}
     </div>
   );

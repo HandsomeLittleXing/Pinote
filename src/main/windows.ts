@@ -47,7 +47,6 @@ export class StickerWindowManager {
       resizable: true,
       skipTaskbar: true,
       alwaysOnTop: sticker.isPinned,
-      opacity: sticker.opacity,
       webPreferences: {
         preload: this.getPreloadPath(),
         contextIsolation: true,
@@ -59,7 +58,7 @@ export class StickerWindowManager {
     win.loadURL(this.getRendererUrl(`id=${sticker.id}`));
 
     // 窗口关闭时隐藏而非销毁
-    win.on('close', (e: Event) => {
+    win.on('close', (e) => {
       e.preventDefault();
       this.hideStickerWindow(sticker.id);
     });
@@ -207,13 +206,25 @@ export class StickerWindowManager {
     this.store.updateSticker(id, { isPinned: pinned });
   }
 
-  /** 设置便签透明度 */
-  setStickerOpacity(id: string, opacity: number): void {
-    const win = this.windows.get(id);
-    if (win && !win.isDestroyed()) {
-      win.setOpacity(opacity);
+  /**
+   * 应用来自同步的窗口状态。
+   * 只调整已存在的窗口，不创建新窗口、不写 store，避免同步回环和弹窗风暴。
+   */
+  applyRemoteState(sticker: Sticker): void {
+    const win = this.windows.get(sticker.id);
+    if (!win || win.isDestroyed()) return;
+
+    if (sticker.deletedAt) {
+      this.closeStickerWindow(sticker.id);
+      return;
     }
-    this.store.updateSticker(id, { opacity });
+
+    win.setAlwaysOnTop(sticker.isPinned, 'floating');
+    if (sticker.isVisible) {
+      win.show();
+    } else {
+      win.hide();
+    }
   }
 
   /** 创建或显示列表面板窗口 */
@@ -231,7 +242,6 @@ export class StickerWindowManager {
       minHeight: 400,
       title: '电脑便签 - 便签列表',
       autoHideMenuBar: true,
-      menuBarVisible: false,
       webPreferences: {
         preload: this.getPreloadPath(),
         contextIsolation: true,
@@ -258,7 +268,6 @@ export class StickerWindowManager {
       title: '电脑便签 - 设置',
       resizable: true,
       autoHideMenuBar: true,
-      menuBarVisible: false,
       webPreferences: {
         preload: this.getPreloadPath(),
         contextIsolation: true,
@@ -270,12 +279,12 @@ export class StickerWindowManager {
     return settingsWin;
   }
 
-  /** 恢复所有可见便签窗口 */
+  /** 恢复所有可见便签窗口；用户主动隐藏的状态必须保留 */
   restoreAllWindows(): void {
     const stickers = this.store.getAllStickers();
 
     if (stickers.length === 0) {
-      // 没有便签，创建欢迎便签
+      // 没有任何便签（含已软删除）时创建欢迎便签
       const welcomeSticker = this.store.createSticker({
         content: '<p>欢迎使用电脑便签 ✏️</p><p>拖动便签靠近屏幕边缘会自动贴边吸附</p>',
       });
@@ -283,19 +292,11 @@ export class StickerWindowManager {
       return;
     }
 
-    // 有便签但全部隐藏了 → 全部设为可见并显示
-    const visibleStickers = stickers.filter((s) => s.isVisible);
-    if (visibleStickers.length === 0) {
-      stickers.forEach((s) => {
-        this.store.updateSticker(s.id, { isVisible: true });
+    stickers
+      .filter((sticker) => sticker.isVisible)
+      .forEach((sticker) => {
+        this.createStickerWindow(sticker);
       });
-    }
-
-    // 显示所有便签
-    const toShow = visibleStickers.length > 0 ? visibleStickers : stickers;
-    toShow.forEach((sticker) => {
-      this.createStickerWindow(sticker);
-    });
   }
 
   /** 确保窗口位置在屏幕可见区域内 */

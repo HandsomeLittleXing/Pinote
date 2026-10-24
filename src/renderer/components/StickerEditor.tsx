@@ -1,20 +1,55 @@
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Editor, EditorContent } from '@tiptap/react';
+import {
+  Bell,
+  Bold,
+  Check,
+  Ellipsis,
+  Eye,
+  GripVertical,
+  Italic,
+  List,
+  ListChecks,
+  ListOrdered,
+  Loader2,
+  Palette,
+  Pin,
+  PinOff,
+  Redo2,
+  Tag,
+  Type,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { getExtensions, FONT_COLORS } from '../extensions';
 import { useSticker } from '../hooks/useSticker';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
-import { getBackgroundColor, getTextColor } from '../utils/colors';
+import { getBackgroundColor, getTextColor, withAlpha, clampOpacity } from '../utils/colors';
+import { getApi } from '../utils/api';
 import { ColorPicker } from './ColorPicker';
 import { TransparencySlider } from './TransparencySlider';
 import { TagInput } from './TagInput';
 import { ReminderPicker } from './ReminderPicker';
+import { IconButton } from './ui/IconButton';
+import { Tooltip } from './ui/Tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './ui/DropdownMenu';
+import { Popover, PopoverAnchor, PopoverContent } from './ui/Popover';
 import type { StickerColor } from '../../shared/types';
 import '../styles/sticker.css';
 
 interface StickerEditorProps {
   stickerId: string;
 }
+
+type ActivePanel = 'color' | 'opacity' | 'tags' | 'reminder' | 'fontColor' | null;
 
 const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   const {
@@ -27,15 +62,14 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
     updateTags,
     setReminder,
     hideWindow,
+    reload,
   } = useSticker(stickerId);
 
   const { isDark } = useTheme();
 
   const [editor, setEditor] = useState<Editor | null>(null);
   const [content, setContent] = useState('');
-  const contentRef = useRef<string>('');
-  const [activePanel, setActivePanel] = useState<'color' | 'opacity' | 'tags' | 'reminder' | null>(null);
-  const [showFontColor, setShowFontColor] = useState(false);
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
 
   const handleSave = useCallback(
     async (id: string, html: string) => {
@@ -55,9 +89,7 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
         },
       },
       onUpdate: ({ editor: ed }) => {
-        const html = ed.getHTML();
-        contentRef.current = html;
-        setContent(html);
+        setContent(ed.getHTML());
       },
     });
 
@@ -71,11 +103,18 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
       const currentContent = editor.getHTML();
       if (sticker.content && currentContent !== sticker.content) {
         editor.commands.setContent(sticker.content);
-        contentRef.current = sticker.content;
         setContent(sticker.content);
       }
     }
   }, [sticker?.id, sticker?.content, editor]);
+
+  // 同步或其他窗口更新本条便签时刷新；正在输入时不打断
+  useEffect(() => {
+    return getApi().sticker.onChanged((id) => {
+      if (id !== stickerId || editor?.isFocused) return;
+      reload();
+    });
+  }, [stickerId, editor, reload]);
 
   useAutoSave(stickerId, content, handleSave);
 
@@ -88,8 +127,8 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   );
 
   const handleOpacityChange = useCallback(
-    (_event: Event, value: number | number[]) => {
-      updateOpacity(value as number);
+    (value: number) => {
+      updateOpacity(value);
     },
     [updateOpacity]
   );
@@ -109,17 +148,30 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
     [setReminder]
   );
 
-  const togglePanel = useCallback((panel: 'color' | 'opacity' | 'tags' | 'reminder') => {
-    setActivePanel((prev) => (prev === panel ? null : panel));
-    setShowFontColor(false);
+  const applyFontColor = useCallback(
+    (value: string) => {
+      if (!editor) return;
+      if (value) {
+        (editor.chain().focus() as any).setFontColor(value).run();
+      } else {
+        (editor.chain().focus() as any).unsetFontColor().run();
+      }
+      setActivePanel(null);
+    },
+    [editor]
+  );
+
+  // 菜单关闭后再打开浮层，避免同一次点击被浮层的“点击外部关闭”逻辑吃掉
+  const openPanel = useCallback((panel: Exclude<ActivePanel, null>) => {
+    window.setTimeout(() => setActivePanel(panel), 0);
   }, []);
 
   if (loading || !sticker) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+      <div className="flex h-screen items-center justify-center bg-canvas">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-gray-400">加载中...</span>
+          <Loader2 className="h-5 w-5 animate-spin text-accent" />
+          <span className="text-xs text-ink-subtle">加载中...</span>
         </div>
       </div>
     );
@@ -127,174 +179,232 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
 
   const bgColor = getBackgroundColor(sticker.color, isDark);
   const txtColor = getTextColor(sticker.color, isDark);
+  const bgAlpha = clampOpacity(sticker.opacity);
+  const noDrag = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
 
   return (
     <div
       className="sticker-window no-select"
-      style={{ backgroundColor: bgColor, color: txtColor }}
+      style={{ backgroundColor: withAlpha(bgColor, bgAlpha), color: txtColor }}
     >
-      {/* 统一工具栏 */}
+      {/* 统一工具栏：常驻拖拽点 / 更多 / 关闭，窄窗口下不溢出 */}
       <div className="unified-toolbar titlebar-drag">
-        {/* 左侧：富文本编辑工具 */}
-        {editor && (
-          <div className="flex items-center gap-0.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-            <button
-              className={`toolbar-btn ${editor.isActive('bold') ? 'active' : ''}`}
-              onClick={() => editor.chain().focus().toggleBold().run()}
-              title="加粗"
+        <div className="toolbar-grip" aria-hidden="true">
+          <GripVertical size={13} />
+        </div>
+
+        <div className="toolbar-optional items-center gap-0.5" style={noDrag}>
+          <Tooltip label="加粗">
+            <IconButton
+              label="加粗"
+              active={editor?.isActive('bold')}
+              onClick={() => editor?.chain().focus().toggleBold().run()}
             >
-              <strong>B</strong>
-            </button>
-            <button
-              className={`toolbar-btn ${editor.isActive('italic') ? 'active' : ''}`}
-              onClick={() => editor.chain().focus().toggleItalic().run()}
-              title="斜体"
+              <Bold size={14} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip label="斜体">
+            <IconButton
+              label="斜体"
+              active={editor?.isActive('italic')}
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
             >
-              <em>I</em>
-            </button>
-            <span className="toolbar-sep" />
-            <button
-              className={`toolbar-btn ${editor.isActive('bulletList') ? 'active' : ''}`}
-              onClick={() => editor.chain().focus().toggleBulletList().run()}
-              title="无序列表"
+              <Italic size={14} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip label="待办">
+            <IconButton
+              label="待办"
+              active={editor?.isActive('taskList')}
+              onClick={() => editor?.chain().focus().toggleTaskList().run()}
             >
-              ☰
-            </button>
-            <button
-              className={`toolbar-btn ${editor.isActive('orderedList') ? 'active' : ''}`}
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              title="有序列表"
+              <ListChecks size={14} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip label="提醒">
+            <IconButton
+              label="提醒"
+              active={activePanel === 'reminder'}
+              onClick={() => setActivePanel(activePanel === 'reminder' ? null : 'reminder')}
             >
-              1.
-            </button>
-            <button
-              className={`toolbar-btn ${editor.isActive('taskList') ? 'active' : ''}`}
-              onClick={() => editor.chain().focus().toggleTaskList().run()}
-              title="待办"
-            >
-              ☑
-            </button>
-            <span className="toolbar-sep" />
-            <button
-              className="toolbar-btn"
-              onClick={() => editor.chain().focus().undo().run()}
-              disabled={!editor.can().undo()}
-              title="撤销"
-            >
-              ↩
-            </button>
-            <button
-              className="toolbar-btn"
-              onClick={() => editor.chain().focus().redo().run()}
-              disabled={!editor.can().redo()}
-              title="重做"
-            >
-              ↪
-            </button>
-            <span className="toolbar-sep" />
-            <div className="relative">
-              <button
-                className={`toolbar-btn ${showFontColor ? 'active' : ''}`}
-                onClick={() => {
-                  setShowFontColor(!showFontColor);
-                  setActivePanel(null);
-                }}
-                title="字体颜色"
-                style={{ fontSize: '15px' }}
-              >
-                <span style={{ borderBottom: '2px solid #e53935', paddingBottom: '1px' }}>A</span>
-              </button>
-              {showFontColor && (
-                <div className="absolute top-full left-0 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl p-2 flex flex-wrap gap-1.5 w-[130px]">
-                  {FONT_COLORS.map((c) => (
-                    <button
-                      key={c.value}
-                      className="w-5 h-5 rounded-full border-2 border-gray-200 dark:border-gray-600 hover:scale-125 transition-transform flex-shrink-0 shadow-sm"
-                      style={{ backgroundColor: c.value || '#333' }}
-                      title={c.label}
-                      onClick={() => {
-                        if (c.value) {
-                          (editor.chain().focus() as any).setFontColor(c.value).run();
-                        } else {
-                          (editor.chain().focus() as any).unsetFontColor().run();
-                        }
-                        setShowFontColor(false);
-                      }}
-                    />
-                  ))}
+              <Bell size={14} />
+            </IconButton>
+          </Tooltip>
+        </div>
+
+        <div className="min-w-2 flex-1" />
+
+        <div className="flex items-center gap-0.5" style={noDrag}>
+          <Popover
+            open={activePanel !== null}
+            onOpenChange={(open) => {
+              if (!open) setActivePanel(null);
+            }}
+          >
+            <PopoverAnchor asChild>
+              <span className="inline-block h-6 w-0" aria-hidden="true" />
+            </PopoverAnchor>
+            <PopoverContent align="end">
+              {activePanel === 'color' && (
+                <ColorPicker
+                  currentColor={sticker.color}
+                  onColorChange={handleColorChange}
+                  isDark={isDark}
+                />
+              )}
+              {activePanel === 'opacity' && (
+                <TransparencySlider opacity={sticker.opacity} onChange={handleOpacityChange} />
+              )}
+              {activePanel === 'tags' && (
+                <TagInput tags={sticker.tags} onTagsChange={handleTagsChange} />
+              )}
+              {activePanel === 'reminder' && (
+                <ReminderPicker reminder={sticker.reminder} onReminderSet={handleReminderSet} />
+              )}
+              {activePanel === 'fontColor' && (
+                <div>
+                  <div className="mb-2 text-xs font-medium text-ink-muted">字体颜色</div>
+                  <div className="flex flex-wrap gap-2">
+                    {FONT_COLORS.map((color) => (
+                      <button
+                        key={color.label}
+                        type="button"
+                        title={color.label}
+                        aria-label={color.label}
+                        onClick={() => applyFontColor(color.value)}
+                        className="flex h-6 w-6 items-center justify-center rounded-full border border-line/20 shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
+                        style={{ backgroundColor: color.value || 'transparent' }}
+                      >
+                        {!color.value && <span className="text-[10px] text-ink-muted">A</span>}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
+            </PopoverContent>
+          </Popover>
 
-        {/* 中间拖拽区域 */}
-        <div className="flex-1 min-w-4" />
+          <DropdownMenu>
+            <Tooltip label="更多操作">
+              <DropdownMenuTrigger asChild>
+                <IconButton label="更多操作">
+                  <Ellipsis size={15} />
+                </IconButton>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="max-h-[calc(100vh-40px)] overflow-y-auto">
+              <DropdownMenuLabel>格式</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={!editor}
+                onSelect={() => {
+                  editor?.chain().focus().toggleBold().run();
+                }}
+              >
+                <Bold size={14} /> 加粗
+                {editor?.isActive('bold') && <Check size={14} className="ml-auto text-accent" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!editor}
+                onSelect={() => {
+                  editor?.chain().focus().toggleItalic().run();
+                }}
+              >
+                <Italic size={14} /> 斜体
+                {editor?.isActive('italic') && (
+                  <Check size={14} className="ml-auto text-accent" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!editor}
+                onSelect={() => {
+                  editor?.chain().focus().toggleBulletList().run();
+                }}
+              >
+                <List size={14} /> 无序列表
+                {editor?.isActive('bulletList') && (
+                  <Check size={14} className="ml-auto text-accent" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!editor}
+                onSelect={() => {
+                  editor?.chain().focus().toggleOrderedList().run();
+                }}
+              >
+                <ListOrdered size={14} /> 有序列表
+                {editor?.isActive('orderedList') && (
+                  <Check size={14} className="ml-auto text-accent" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!editor}
+                onSelect={() => {
+                  editor?.chain().focus().toggleTaskList().run();
+                }}
+              >
+                <ListChecks size={14} /> 待办清单
+                {editor?.isActive('taskList') && (
+                  <Check size={14} className="ml-auto text-accent" />
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!editor || !editor.can().undo()}
+                onSelect={() => {
+                  editor?.chain().focus().undo().run();
+                }}
+              >
+                <Undo2 size={14} /> 撤销
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!editor || !editor.can().redo()}
+                onSelect={() => {
+                  editor?.chain().focus().redo().run();
+                }}
+              >
+                <Redo2 size={14} /> 重做
+              </DropdownMenuItem>
 
-        {/* 右侧：窗口操作工具 */}
-        <div className="flex items-center gap-0.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <button
-            className={`toolbar-btn ${activePanel === 'color' ? 'active' : ''}`}
-            onClick={() => togglePanel('color')}
-            title="换色"
-          >
-            🎨
-          </button>
-          <button
-            className={`toolbar-btn ${activePanel === 'tags' ? 'active' : ''}`}
-            onClick={() => togglePanel('tags')}
-            title="标签"
-          >
-            🏷
-          </button>
-          <button
-            className={`toolbar-btn ${activePanel === 'reminder' ? 'active' : ''}`}
-            onClick={() => togglePanel('reminder')}
-            title="提醒"
-          >
-            ⏰
-          </button>
-          <button
-            className={`toolbar-btn ${sticker.isPinned ? 'pin-active' : ''}`}
-            onClick={togglePin}
-            title={sticker.isPinned ? '取消置顶' : '置顶'}
-          >
-            📌
-          </button>
-          <button
-            className={`toolbar-btn ${activePanel === 'opacity' ? 'active' : ''}`}
-            onClick={() => togglePanel('opacity')}
-            title="透明度"
-          >
-            👁
-          </button>
-          <button className="toolbar-btn close-btn" onClick={hideWindow} title="隐藏">
-            ✕
-          </button>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>便签</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => openPanel('fontColor')}>
+                <Type size={14} /> 字体颜色
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('color')}>
+                <Palette size={14} /> 换色
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('tags')}>
+                <Tag size={14} /> 标签
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('reminder')}>
+                <Bell size={14} /> {sticker.reminder ? '修改提醒' : '提醒'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={togglePin}>
+                {sticker.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                {sticker.isPinned ? '取消置顶' : '置顶'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => openPanel('opacity')}>
+                <Eye size={14} /> 背景不透明度
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={hideWindow}>
+                <X size={14} /> 隐藏便签
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Tooltip label="隐藏便签">
+            <IconButton
+              label="隐藏便签"
+              onClick={hideWindow}
+              className="hover:bg-[#e81123] hover:text-white"
+            >
+              <X size={15} />
+            </IconButton>
+          </Tooltip>
         </div>
       </div>
-
-      {/* 展开面板 */}
-      {activePanel === 'color' && (
-        <div className="panel-popover">
-          <ColorPicker currentColor={sticker.color} onColorChange={handleColorChange} isDark={isDark} />
-        </div>
-      )}
-      {activePanel === 'opacity' && (
-        <div className="panel-popover w-48">
-          <TransparencySlider opacity={sticker.opacity} onChange={handleOpacityChange} />
-        </div>
-      )}
-      {activePanel === 'tags' && (
-        <div className="panel-popover w-56">
-          <TagInput tags={sticker.tags} onTagsChange={handleTagsChange} />
-        </div>
-      )}
-      {activePanel === 'reminder' && (
-        <div className="panel-popover w-64">
-          <ReminderPicker reminder={sticker.reminder} onReminderSet={handleReminderSet} />
-        </div>
-      )}
 
       {/* 编辑器区域 */}
       <div className="sticker-editor flex-1 overflow-y-auto">
