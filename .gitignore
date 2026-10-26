@@ -9,3 +9,28 @@ dist/
 Thumbs.db
 build.bat
 sticker-build3.bat
+
+# 环境变量（含数据库密码等敏感信息）
+.env
+.env.local
+!.env.example
+
+# 部署产物（含 .env，切勿提交）
+*.tar.gz
+*.zip
+
+# Expo / React Native
+.expo/
+.metro-health-check*
+# prebuild 生成的原生工程（可用 npx expo prebuild 重新生成）
+mobile/android/
+mobile/ios/
+
+# 打包产物
+*.apk
+*.aab
+mobile/release/
+release-next/
+
+# 本地编辑器/工具配置
+.claude/settings.local.json
