@@ -1,10 +1,12 @@
 import React, { forwardRef } from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 /** 下拉菜单内容：玻璃面板，自动避让窗口边缘 */
 export const DropdownMenuContent = forwardRef<
@@ -68,5 +70,31 @@ export const DropdownMenuSeparator = forwardRef<
       className={cn('my-1 h-px bg-line/10', className)}
       {...props}
     />
+  );
+});
+
+/** 单选菜单项：用于排序等互斥选项 */
+export const DropdownMenuRadioItem = forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
+>(function DropdownMenuRadioItem({ className, children, ...props }, ref) {
+  return (
+    <DropdownMenuPrimitive.RadioItem
+      ref={ref}
+      className={cn(
+        'flex cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-[13px] text-ink outline-none transition-colors',
+        'data-[highlighted]:bg-accent/10 data-[highlighted]:text-accent',
+        'data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
+        className
+      )}
+      {...props}
+    >
+      <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+        <DropdownMenuPrimitive.ItemIndicator>
+          <Check size={12} className="text-accent" />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      {children}
+    </DropdownMenuPrimitive.RadioItem>
   );
 });

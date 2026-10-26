@@ -1,5 +1,7 @@
 import type { WindowState } from '../../shared/types';
 
+export { extractTitle } from '../../shared/note';
+
 /** 计算新便签的偏移位置 */
 export function calculateOffsetPosition(
   existingWindows: WindowState[],
@@ -59,16 +61,4 @@ export function ensureInScreen(
   if (y < 0) y = 0;
 
   return { x, y, width, height };
-}
-
-/** 从便签内容提取纯文本标题（前 20 字） */
-export function extractTitle(content: string): string {
-  return content
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .trim()
-    .slice(0, 20) || '新便签';
 }

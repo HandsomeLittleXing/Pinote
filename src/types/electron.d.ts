@@ -17,6 +17,14 @@ declare module 'electron' {
     setAlwaysOnTop(flag: boolean, level?: string): void;
     setOpacity(opacity: number): void;
     setPosition(x: number, y: number, animate?: boolean): void;
+    setBounds(bounds: { x: number; y: number; width: number; height: number }): void;
+    setMinimumSize(width: number, height: number): void;
+    setMaximumSize(width: number, height: number): void;
+    setTitleBarOverlay(options: {
+      color?: string;
+      symbolColor?: string;
+      height?: number;
+    }): void;
     getBounds(): { x: number; y: number; width: number; height: number };
     webContents: {
       send(channel: string, ...args: any[]): void;
@@ -34,6 +42,7 @@ declare module 'electron' {
 
   export class Menu {
     static buildFromTemplate(template: any[]): Menu;
+    popup(options: { window?: BrowserWindow }): void;
   }
 
   export class Notification {

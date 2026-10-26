@@ -12,16 +12,26 @@ export const IPC = {
   STICKER_SET_OPACITY: 'sticker:set-opacity',
   STICKER_SET_TAGS: 'sticker:set-tags',
   STICKER_SET_REMINDER: 'sticker:set-reminder',
+  STICKER_GET_DELETED: 'sticker:get-deleted',
+  STICKER_RESTORE: 'sticker:restore',
+  STICKER_FOCUS: 'sticker:focus',
   STICKER_LIST_CHANGED: 'sticker:list-changed',
   STICKER_CHANGED: 'sticker:changed',
 
   // 窗口状态
   WINDOW_SAVE_STATE: 'window:save-state',
   WINDOW_CLOSE: 'window:close',
+  WINDOW_SET_COLLAPSED: 'window:set-collapsed',
+  WINDOW_COLLAPSED_CHANGED: 'window:collapsed-changed',
+  WINDOW_SHOW_COLLAPSED_MENU: 'window:show-collapsed-menu',
+
+  // 应用信息
+  APP_GET_VERSION: 'app:get-version',
 
   // 设置
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
+  SHORTCUTS_SET_RECORDING: 'shortcuts:set-recording',
 
   // 全局操作
   LIST_PANEL_OPEN: 'list-panel:open',

@@ -62,6 +62,15 @@ const api: PreloadAPI = {
         ipcRenderer.removeListener(IPC.STICKER_CHANGED, handler);
       };
     },
+    getDeleted(): Promise<Sticker[]> {
+      return ipcRenderer.invoke(IPC.STICKER_GET_DELETED);
+    },
+    restore(id: string): Promise<Sticker> {
+      return ipcRenderer.invoke(IPC.STICKER_RESTORE, id);
+    },
+    focus(id: string): Promise<void> {
+      return ipcRenderer.invoke(IPC.STICKER_FOCUS, id);
+    },
   },
   window: {
     saveState(state: WindowState): Promise<void> {
@@ -69,6 +78,21 @@ const api: PreloadAPI = {
     },
     close(): Promise<void> {
       return ipcRenderer.invoke(IPC.WINDOW_CLOSE);
+    },
+    setCollapsed(collapsed: boolean): Promise<void> {
+      return ipcRenderer.invoke(IPC.WINDOW_SET_COLLAPSED, collapsed);
+    },
+    showCollapsedMenu(): Promise<void> {
+      return ipcRenderer.invoke(IPC.WINDOW_SHOW_COLLAPSED_MENU);
+    },
+    onCollapsedChanged(callback: (collapsed: boolean) => void): () => void {
+      const handler = (_event: any, collapsed: boolean) => {
+        callback(collapsed);
+      };
+      ipcRenderer.on(IPC.WINDOW_COLLAPSED_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.WINDOW_COLLAPSED_CHANGED, handler);
+      };
     },
   },
   settings: {
@@ -99,6 +123,16 @@ const api: PreloadAPI = {
     },
     import(data: ExportData, mode: ImportMode): Promise<void> {
       return ipcRenderer.invoke(IPC.DATA_IMPORT, data, mode);
+    },
+  },
+  shortcuts: {
+    setRecording(recording: boolean): Promise<void> {
+      return ipcRenderer.invoke(IPC.SHORTCUTS_SET_RECORDING, recording);
+    },
+  },
+  app: {
+    getVersion(): Promise<string> {
+      return ipcRenderer.invoke(IPC.APP_GET_VERSION);
     },
   },
   sync: {

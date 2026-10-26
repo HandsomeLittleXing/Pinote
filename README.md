@@ -1,109 +1,241 @@
-# 📌 StickerNote — 电脑便签
+# ❄️ FrostNote · 霜笺
 
-> 轻量级桌面便签应用，开机自启、贴边吸附、自动保存。
+> 冷色极简玻璃风格的跨端便签：桌面常驻、手机随手记、多端同步。
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Windows-10%2F11-blue?logo=windows" />
-  <img src="https://img.shields.io/badge/Electron-28-47848F?logo=electron" />
-  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" />
-  <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" />
-  <img src="https://img.shields.io/badge/License-MIT-green" />
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11%20%C2%B7%20Android-2F6FED" />
+  <img src="https://img.shields.io/badge/Electron-28-47848F?logo=electron&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/React%20Native-0.88-61DAFB?logo=react&logoColor=white" />
+  <img src="https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-20-339933?logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white" />
+  <img src="https://img.shields.io/badge/license-MIT-green" />
 </p>
 
 ---
 
-## ✨ 功能特性
+## 这是什么
+
+FrostNote 是一套**私人便签系统**，由三个部分组成：
+
+| 部分 | 形态 | 职责 |
+|------|------|------|
+| 桌面端 | Electron 应用（Windows） | 便签常驻桌面，随手一贴；本地优先存储 |
+| 手机端 | Expo / React Native（Android） | 随时随地查看、编辑、新建便签 |
+| 同步后端 | Node.js + Express + MySQL | 无账号体系，用配对码把设备并入同一个「同步空间」 |
+
+设计目标是**不打扰**：便签贴在桌面边缘、点开即写；需要跨设备时再打开同步，数据仍然优先保存在本地。
+
+界面语言为「冷色极简玻璃」——冰蓝渐变背景、半透明玻璃层、8 种低饱和冷色便签纸，支持系统深色模式。
+
+> 项目内部沿用历史标识：`sticker-note`、`StickerNote`、`com.stickernote.*`、安装包名「电脑便签」。
+
+---
+
+## 功能
+
+### 桌面端
 
 | 功能 | 说明 |
-|:---:|------|
-| 🚀 开机自启动 | 注册表写入，开机自动显示便签 |
-| 📎 贴边吸附 | 拖到屏幕边缘自动吸附，不挡桌面 |
-| ✏️ 富文本编辑 | 加粗、斜体、字号、字体颜色、待办清单 |
-| 🎨 8 种预设颜色 | 黄 / 绿 / 粉 / 蓝 / 紫 / 橙 / 白 / 灰 |
-| 🔍 透明度调节 | 20% ~ 100% 自由调节 |
-| 📌 置顶显示 | 便签始终在最上层 |
-| ⏰ 定时提醒 | 快捷提醒（30分钟 / 1小时 / 明天） |
-| 🏷️ 标签管理 | 自定义标签 + 按标签筛选 |
-| ⌨️ 全局快捷键 | `Ctrl+Alt+N` 新建 · `Ctrl+Alt+S` 列表 |
-| 💾 数据导入导出 | JSON 格式备份 / 恢复 |
+|------|------|
+| 🪟 桌面便签窗口 | 独立无边框窗口，可拖动、缩放、贴边吸附 |
+| 📐 折叠 / 展开 | 折叠成一条标题栏，不遮挡桌面；标题栏右键可直接换色 |
+| ✏️ 富文本 | 加粗、斜体、列表、待办清单、字号、字体颜色 |
+| 🎨 8 种冷色 | 冰蓝 / 湖蓝 / 薄荷 / 玫瑰 / 鼠尾草 / 丁香 / 霜白 / 云灰（兼容旧色值自动映射） |
+| 📌 置顶与透明度 | 便签始终置顶，透明度 20%–100% |
+| ⏰ 定时提醒 | 快捷提醒（30 分钟 / 1 小时 / 明天）与自定义时间 |
+| 🏷️ 标签与搜索 | 自定义标签、按标签筛选、全文搜索 |
+| 🗑️ 软删除与恢复 | 删除进入回收站，可随时恢复 |
+| ⌨️ 全局快捷键 | 默认 `Ctrl+Alt+N` 新建、`Ctrl+Alt+S` 打开列表，可在设置中录制修改 |
+| 🚀 开机自启 | 写入注册表，开机自动显示 |
+| 🔕 系统托盘 | 关闭窗口不退出；托盘菜单快速新建 / 打开列表 / 退出 |
 | 🌙 深色模式 | 跟随系统 / 浅色 / 深色 |
-| 🔕 系统托盘 | 关闭窗口不退出，双击托盘新建 |
+| 💾 导入导出 | JSON 备份与恢复 |
 
-## 📸 截图
+### 手机端
 
-<!-- TODO: 添加截图 -->
+- 便签列表：搜索、标签筛选、置顶 / 提醒筛选、下拉刷新同步
+- 富文本编辑：加粗、斜体、列表，400 ms 防抖自动保存
+- 8 种冷色选纸、跟随系统的亮 / 暗主题
+- 扫码或输入配对码完成配对，无需登录
+- SQLite 本地缓存，离线可读可写
 
-## 🛠️ 技术栈
+### 多端同步
 
-- **前端**: React 18 + TypeScript + Tailwind CSS
-- **富文本**: Tiptap 编辑器
-- **桌面**: Electron 28
-- **构建**: Vite + electron-builder
-- **数据**: electron-store (JSON)
-
-## 📦 安装
-
-### 下载安装包
-
-👉 [**Releases 页面下载最新版本**](https://github.com/KDY2003/sticker-note/releases)
-
-- 安装路径：`C:\Program Files\StickerNote\`
-- 系统要求：Windows 10/11 x64
-
-### 从源码构建
-
-```bash
-# 克隆仓库
-git clone https://github.com/KDY2003/sticker-note.git
-cd sticker-note
-
-# 安装依赖
-npm install
-
-# 开发模式
-npm run dev
-
-# 构建安装包
-npm run build
-```
-
-## 📂 项目结构
-
-```
-sticker-note/
-├── src/
-│   ├── main/              # Electron 主进程
-│   │   ├── index.ts       # 入口
-│   │   ├── windows.ts     # 窗口管理 + 贴边吸附
-│   │   ├── store.ts       # 数据存储
-│   │   ├── tray.ts        # 系统托盘
-│   │   ├── shortcuts.ts   # 全局快捷键
-│   │   ├── reminders.ts   # 提醒调度
-│   │   └── ipc-handlers.ts # IPC 通信
-│   ├── preload/           # 预加载脚本
-│   ├── renderer/          # React 渲染进程
-│   │   ├── components/    # UI 组件
-│   │   ├── hooks/         # 自定义 Hooks
-│   │   └── utils/         # 工具函数
-│   └── shared/            # 共享类型定义
-├── resources/             # 图标资源
-├── electron-builder.yml   # 打包配置
-├── vite.config.ts         # Vite 配置
-└── package.json
-```
-
-## 📝 开发备忘
-
-- **贴边吸附**: 窗口 move 事件 + 100ms 防抖，松手后检测 25px 阈值
-- **开机自启动**: PowerShell 写注册表 `HKCU\...\Run`
-- **数据存储**: electron-store，JSON 文件在 `%APPDATA%/sticker-note/`
-
-## 📄 License
-
-[MIT](LICENSE)
+- **本地优先**：两端都以本地数据为日常读写对象，联网时增量双向同步
+- **最后写入优先（LWW）**：同一条便签冲突时以 `updatedAt` 较新者为准
+- **软删除**：删除以 tombstone 同步，多端一致
+- **多设备**：每台设备独立 token，可同时配对多部手机
+- **默认关闭**：同步需要在设置中手动开启
 
 ---
 
-<p align="center">
-  如果觉得有用，点个 ⭐ 支持一下！
-</p>
+## 架构
+
+```
+┌────────────────────┐        HTTP / HTTPS        ┌─────────────────────────────┐
+│  桌面端 (Electron)   │ ────────────────────────► │  同步后端 (Node + Express)    │
+│  electron-store     │          /sync            │        │                    │
+│  SyncManager        │                           │        ▼                    │
+└────────────────────┘                           │  MySQL (sticker_note_sync)  │
+                                                 │                             │
+┌────────────────────┐        HTTP / HTTPS        │  · sync_spaces              │
+│  手机端 (Expo RN)    │ ────────────────────────► │  · devices（token 哈希）      │
+│  SQLite + AsyncStorage                        │  · pairing_codes            │
+│  syncClient         │                           │  · stickers（软删除）         │
+└────────────────────┘                           └─────────────────────────────┘
+```
+
+- 两端共用 `src/shared/` 下的类型定义、冷色板与文本工具，避免字段漂移
+- 后端只保存 token 的 SHA-256 哈希；配对码 6 位、5 分钟有效、仅可使用一次
+
+---
+
+## 技术栈
+
+| 层 | 技术 |
+|----|------|
+| 桌面外壳 | Electron 28 · electron-vite · electron-store · electron-builder |
+| 桌面 UI | React 18 · TypeScript · Tailwind CSS · Radix UI · lucide-react |
+| 富文本 | Tiptap（桌面）· react-native-pell-rich-editor（手机） |
+| 手机端 | Expo SDK 58 · React Native 0.88 · React Navigation · expo-blur · expo-sqlite |
+| 同步后端 | Node.js 20 · Express · MySQL 8 · tsx |
+| 部署 | Nginx / systemd 或 Docker，详见 [部署指南](docs/DEPLOYMENT.md) |
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- Node.js 20+、npm
+- 桌面端：Windows 10/11 x64
+- 手机端：Android SDK / JDK 17（本地构建 APK 时需要）；Expo Go 预览则无需
+
+### 桌面端
+
+```bash
+npm install
+npm run dev        # 开发模式（渲染进程热更新）
+npm run typecheck  # 类型检查
+npm run build      # 打包 NSIS 安装包 -> release/
+```
+
+未签名的安装包位于 `release/电脑便签-Setup-<version>.exe`。
+
+### 同步后端
+
+```bash
+cd server
+cp .env.example .env   # 填写 DB_HOST / DB_USER / DB_PASSWORD 等
+npm install
+npm run db:init        # 创建数据库与表结构
+npm run dev            # http://localhost:4000，健康检查 /health
+```
+
+生产部署（ECS、systemd、HTTPS、升级回滚）见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) 与 [server/deploy/README.md](server/deploy/README.md)。
+
+也可以直接用 Docker：
+
+```bash
+cd server
+docker build -t stickernote-sync .
+docker run -d --env-file .env -p 4000:4000 stickernote-sync
+```
+
+### 手机端
+
+```bash
+cd mobile
+npm install
+
+npx expo start          # 用 Expo Go 扫码预览
+npx expo run:android    # 本地开发构建（推荐，含原生玻璃模糊）
+
+# 打 release APK（arm64）
+cd android
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+`mobile/android`、`mobile/ios` 为 `npx expo prebuild` 生成的原生工程，不纳入版本控制。
+
+---
+
+## 配对与同步
+
+1. 桌面端 **设置 → 手机同步**，开启同步并生成 6 位配对码
+2. 手机端首次启动进入配对页：填写服务器地址后输入配对码，或扫描桌面端二维码
+3. 配对成功后，设备获得独立 token，两端进入同一个同步空间
+4. 之后：手机打开列表 / 下拉刷新 / 手动同步；桌面端在开启同步后自动同步
+5. 在任一设备修改便签，另一端下次同步即可看到
+
+冲突策略为最后写入优先；同步空间与设备可在桌面端设置中管理。
+
+---
+
+## 数据与隐私
+
+- 同步**默认关闭**，不开启时所有数据只存在本机
+- 桌面数据保存在 `%APPDATA%/sticker-note/`（electron-store JSON）
+- 手机数据保存在 SQLite + AsyncStorage
+- 服务端仅保存 token 哈希，不保存明文凭据；配对码短时有效且单次使用
+- 后端是个人自建服务，除配对与同步接口外不采集任何数据
+
+---
+
+## 目录结构
+
+```
+.
+├─ src/                       # 桌面端（Electron）
+│  ├─ main/                   # 主进程：窗口、托盘、快捷键、提醒、同步、存储
+│  ├─ preload/                # contextBridge 暴露的 API
+│  ├─ renderer/               # React 渲染进程：便签窗口 / 列表 / 设置
+│  └─ shared/                 # 两端共用：类型、冷色板、文本工具
+├─ mobile/                    # 手机端（Expo / React Native）
+│  ├─ App.tsx
+│  └─ src/
+│     ├─ screens/             # 配对 / 列表 / 编辑
+│     ├─ components/          # 玻璃表面、卡片、标题栏等
+│     ├─ api/                 # 同步客户端与配对
+│     ├─ storage/             # SQLite
+│     └─ theme.ts             # 移动端主题 token
+├─ server/                    # 同步后端
+│  ├─ src/routes/             # pairing / devices / sync
+│  ├─ src/db/                 # schema、初始化与迁移
+│  ├─ Dockerfile
+│  └─ deploy/                 # ECS 部署脚本与 systemd unit
+├─ docs/                      # 架构、设计、实现与部署文档
+├─ resources/                 # 图标等打包资源
+├─ electron-builder.yml
+└─ package.json
+```
+
+---
+
+## 文档
+
+- [产品需求 (PRD)](docs/PRD.md)
+- [系统架构](docs/ARCHITECTURE.md)
+- [同步与移动端架构](docs/SYNC-ARCHITECTURE.md)
+- [部署指南](docs/DEPLOYMENT.md)
+- [UI 改版方案](docs/UI-REDESIGN-PLAN.md)
+- 分阶段设计与实现记录：[docs/design](docs/design) · [docs/implementation](docs/implementation)
+
+---
+
+## 已知限制
+
+- 桌面端仅支持 Windows（macOS / Linux 未适配）
+- 手机端目前只构建 Android；iOS 需要 macOS 环境
+- 同步为单用户同步空间，无账号与权限体系
+- 冲突策略为最后写入优先，不合并同一便签的并发编辑
+- 列表卡片使用预合成不透明底色（Android「半透明 + elevation」渲染瑕疵的规避方案）
+
+---
+
+## License
+
+[MIT](LICENSE)

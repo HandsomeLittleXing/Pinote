@@ -40,8 +40,10 @@ CREATE TABLE IF NOT EXISTS `pairing_codes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 便签数据：服务端权威副本，按 sync_space 隔离，软删除
+-- 主键为 (sync_space_id, id)：同一张本地便签可能被同步到不同空间（如重新配对），
+-- 仅用 id 做主键会导致跨空间主键冲突。
 CREATE TABLE IF NOT EXISTS `stickers` (
-  `id` CHAR(36) NOT NULL PRIMARY KEY,
+  `id` CHAR(36) NOT NULL,
   `sync_space_id` CHAR(36) NOT NULL,
   `content` MEDIUMTEXT NOT NULL,
   `color` VARCHAR(10) NOT NULL,
@@ -55,7 +57,7 @@ CREATE TABLE IF NOT EXISTS `stickers` (
   `created_at` DATETIME(3) NOT NULL,
   `updated_at` DATETIME(3) NOT NULL,
   `deleted_at` DATETIME(3) NULL,
-  KEY `idx_stickers_sync_space` (`sync_space_id`),
+  PRIMARY KEY (`sync_space_id`, `id`),
   KEY `idx_stickers_updated_at` (`sync_space_id`, `updated_at`),
   CONSTRAINT `fk_stickers_sync_space` FOREIGN KEY (`sync_space_id`)
     REFERENCES `sync_spaces` (`id`) ON DELETE CASCADE

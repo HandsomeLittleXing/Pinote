@@ -1,5 +1,12 @@
 import React from 'react';
 import { Button } from './ui/Button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from './ui/Dialog';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -7,42 +14,42 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** 合并导入等非破坏操作使用 primary，删除/覆盖使用 danger */
+  confirmVariant?: 'primary' | 'danger';
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-/** 确认对话框（纯 Tailwind，不依赖 MUI Dialog） */
+/** 确认对话框：基于 Radix Dialog，保留原有调用签名 */
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
   title,
   message,
   confirmLabel = '确认',
   cancelLabel = '取消',
+  confirmVariant = 'danger',
   onConfirm,
   onCancel,
 }) => {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* 遮罩层 */}
-      <div
-        className="animate-fadeIn absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      {/* 对话框 */}
-      <div className="animate-scaleIn relative w-80 rounded-xl border border-line/10 bg-surface p-6 shadow-float">
-        <h3 className="mb-2 text-base font-semibold text-ink">{title}</h3>
-        <p className="mb-5 text-sm leading-relaxed text-ink-muted">{message}</p>
-        <div className="flex justify-end gap-2">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
+    >
+      <DialogContent>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{message}</DialogDescription>
+        <DialogFooter>
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
+          <Button variant={confirmVariant} onClick={onConfirm}>
             {confirmLabel}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

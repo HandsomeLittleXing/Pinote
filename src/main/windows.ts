@@ -1,17 +1,46 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, nativeTheme, screen } from 'electron';
 import type { Sticker, WindowState } from '../shared/types';
 import type { StickerStore } from './store';
+import { IPC } from '../shared/ipc-channels';
 
 type GetPreloadPathFn = () => string;
 type GetRendererUrlFn = (query?: string) => string;
 
 /** 贴边阈值（像素） */
 const EDGE_SNAP_THRESHOLD = 25;
+/** 收起后的窗口高度（工具栏 30 + 4px 彩条） */
+const COLLAPSED_HEIGHT = 34;
+/** 展开态最小高度 */
+const MIN_EXPANDED_HEIGHT = 120;
+/** 最小宽度 */
+const MIN_WIDTH = 160;
+/** 恢复最大尺寸时使用足够大的值 */
+const MAX_WINDOW_SIZE = 10000;
+/** 列表/设置窗口标题栏高度 */
+const PANEL_OVERLAY_HEIGHT = 40;
+
+/** 面板窗口的标题栏覆盖层与底色 */
+const PANEL_THEME = {
+  light: {
+    overlayColor: '#FFFFFF',
+    symbolColor: '#64748B',
+    backgroundColor: '#F4F7FA',
+  },
+  dark: {
+    overlayColor: '#141E30',
+    symbolColor: '#8FA2B8',
+    backgroundColor: '#0B1220',
+  },
+} as const;
 
 /** 便签窗口管理器 */
 export class StickerWindowManager {
   private windows: Map<string, BrowserWindow> = new Map();
   private snapCooldown: Map<string, number> = new Map();  // 贴边冷却时间戳
+  /** 当前处于收起状态的便签 id（仅会话内） */
+  private collapsedIds: Set<string> = new Set();
+  /** 收起前的展开高度，用于恢复 */
+  private expandedHeights: Map<string, number> = new Map();
   private listPanelWindow: BrowserWindow | null = null;
   private store: StickerStore;
   private getPreloadPath: GetPreloadPathFn;
@@ -40,8 +69,8 @@ export class StickerWindowManager {
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      minWidth: 160,
-      minHeight: 120,
+      minWidth: MIN_WIDTH,
+      minHeight: MIN_EXPANDED_HEIGHT,
       frame: false,
       transparent: true,
       resizable: true,
@@ -69,10 +98,7 @@ export class StickerWindowManager {
       if (moveTimer) clearTimeout(moveTimer);
       moveTimer = setTimeout(() => {
         if (!win.isDestroyed()) {
-          const b = win.getBounds();
-          this.store.saveWindowState(sticker.id, {
-            x: b.x, y: b.y, width: b.width, height: b.height,
-          });
+          this.persistBounds(sticker.id, win.getBounds());
         }
       }, 300);
     };
@@ -97,6 +123,23 @@ export class StickerWindowManager {
 
     this.windows.set(sticker.id, win);
     return win;
+  }
+
+  /**
+   * 保存窗口位置。
+   * 收起期间保留展开高度，避免把 34px 写回 WindowState。
+   */
+  private persistBounds(id: string, bounds: WindowState): void {
+    const current = this.store.getStickerById(id)?.windowState;
+    const isCollapsed = this.collapsedIds.has(id);
+    this.store.saveWindowState(id, {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: isCollapsed
+        ? this.expandedHeights.get(id) ?? current?.height ?? bounds.height
+        : bounds.height,
+    });
   }
 
   /** 松开鼠标后执行贴边吸附 */
@@ -142,9 +185,12 @@ export class StickerWindowManager {
     if (snapped && (newX !== bounds.x || newY !== bounds.y)) {
       this.snapCooldown.set(id, Date.now());
       win.setPosition(newX, newY, false);
-      // 吸附后保存位置
-      this.store.saveWindowState(id, {
-        x: newX, y: newY, width: bounds.width, height: bounds.height,
+      // 吸附后保存位置（收起时保留展开高度）
+      this.persistBounds(id, {
+        x: newX,
+        y: newY,
+        width: bounds.width,
+        height: bounds.height,
       });
     }
   }
@@ -174,6 +220,27 @@ export class StickerWindowManager {
     }
   }
 
+  /**
+   * 从列表点击便签：已有窗口直接显示/聚焦（必要时补写可见状态），
+   * 窗口不存在（例如恢复已删除便签后）则创建。
+   */
+  focusOrShowStickerWindow(id: string): void {
+    const sticker = this.store.getStickerById(id);
+    if (!sticker) return;
+
+    const win = this.windows.get(id);
+    if (win && !win.isDestroyed()) {
+      if (!sticker.isVisible) {
+        this.store.updateSticker(id, { isVisible: true });
+      }
+      win.show();
+      win.focus();
+      return;
+    }
+
+    this.showStickerWindow(id);
+  }
+
   /** 关闭并销毁便签窗口 */
   closeStickerWindow(id: string): void {
     const win = this.windows.get(id);
@@ -183,6 +250,8 @@ export class StickerWindowManager {
     }
     this.windows.delete(id);
     this.snapCooldown.delete(id);
+    this.collapsedIds.delete(id);
+    this.expandedHeights.delete(id);
   }
 
   /** 聚焦便签窗口 */
@@ -194,6 +263,42 @@ export class StickerWindowManager {
       }
       win.show();
       win.focus();
+    }
+  }
+
+  /**
+   * 收起/展开便签窗口。
+   * 收起状态只保存在当前会话，应用重启后恢复展开。
+   */
+  setCollapsed(id: string, collapsed: boolean): void {
+    const win = this.windows.get(id);
+    if (!win || win.isDestroyed()) return;
+    if (this.collapsedIds.has(id) === collapsed) return;
+
+    const bounds = win.getBounds();
+
+    // 先通知渲染层切换内容，再调整窗口尺寸，避免 34px 窗口里闪出编辑器
+    win.webContents.send(IPC.WINDOW_COLLAPSED_CHANGED, collapsed);
+
+    if (collapsed) {
+      this.expandedHeights.set(id, Math.max(bounds.height, MIN_EXPANDED_HEIGHT));
+      this.collapsedIds.add(id);
+      win.setMinimumSize(MIN_WIDTH, COLLAPSED_HEIGHT);
+      // 锁定高度，允许横向调整
+      win.setMaximumSize(MAX_WINDOW_SIZE, COLLAPSED_HEIGHT);
+      win.setBounds({ ...bounds, height: COLLAPSED_HEIGHT });
+    } else {
+      const height = Math.max(
+        this.expandedHeights.get(id) ??
+          this.store.getStickerById(id)?.windowState.height ??
+          200,
+        MIN_EXPANDED_HEIGHT
+      );
+      this.collapsedIds.delete(id);
+      win.setMinimumSize(MIN_WIDTH, MIN_EXPANDED_HEIGHT);
+      win.setMaximumSize(MAX_WINDOW_SIZE, MAX_WINDOW_SIZE);
+      win.setBounds({ ...bounds, height });
+      this.expandedHeights.delete(id);
     }
   }
 
@@ -227,6 +332,48 @@ export class StickerWindowManager {
     }
   }
 
+  /** 当前有效主题（跟随系统时读取系统状态） */
+  getEffectiveTheme(): 'light' | 'dark' {
+    const settings = this.store.getSettings();
+    if (settings.themeMode === 'system') {
+      return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+    }
+    return settings.themeMode;
+  }
+
+  /** 更新列表/设置窗口的原生标题栏覆盖层颜色 */
+  updatePanelWindowChrome(theme: 'light' | 'dark'): void {
+    const colors = PANEL_THEME[theme];
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (win.isDestroyed()) return;
+      const url = win.webContents.getURL();
+      if (!url.includes('page=list') && !url.includes('page=settings')) return;
+      try {
+        win.setTitleBarOverlay({
+          color: colors.overlayColor,
+          symbolColor: colors.symbolColor,
+          height: PANEL_OVERLAY_HEIGHT,
+        });
+      } catch (error) {
+        console.error('更新标题栏覆盖层失败:', error);
+      }
+    });
+  }
+
+  /** 面板窗口的标题栏/底色配置 */
+  private getPanelWindowOptions() {
+    const colors = PANEL_THEME[this.getEffectiveTheme()];
+    return {
+      titleBarStyle: 'hidden' as const,
+      titleBarOverlay: {
+        color: colors.overlayColor,
+        symbolColor: colors.symbolColor,
+        height: PANEL_OVERLAY_HEIGHT,
+      },
+      backgroundColor: colors.backgroundColor,
+    };
+  }
+
   /** 创建或显示列表面板窗口 */
   createListPanelWindow(): BrowserWindow {
     if (this.listPanelWindow && !this.listPanelWindow.isDestroyed()) {
@@ -236,11 +383,12 @@ export class StickerWindowManager {
     }
 
     this.listPanelWindow = new BrowserWindow({
-      width: 360,
-      height: 600,
-      minWidth: 320,
-      minHeight: 400,
+      width: 560,
+      height: 680,
+      minWidth: 420,
+      minHeight: 480,
       title: '电脑便签 - 便签列表',
+      ...this.getPanelWindowOptions(),
       autoHideMenuBar: true,
       webPreferences: {
         preload: this.getPreloadPath(),
@@ -261,12 +409,13 @@ export class StickerWindowManager {
   /** 创建或显示设置面板窗口 */
   createSettingsWindow(): BrowserWindow {
     const settingsWin = new BrowserWindow({
-      width: 500,
-      height: 500,
-      minWidth: 400,
-      minHeight: 400,
+      width: 640,
+      height: 640,
+      minWidth: 520,
+      minHeight: 480,
       title: '电脑便签 - 设置',
       resizable: true,
+      ...this.getPanelWindowOptions(),
       autoHideMenuBar: true,
       webPreferences: {
         preload: this.getPreloadPath(),

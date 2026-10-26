@@ -1,11 +1,11 @@
 {
   "name": "sticker-note-sync-server",
   "version": "1.0.0",
-  "description": "StickerNote 云同步后端服务",
+  "description": "StickerNote 云同步后端（部署在 ECS，轻量单进程）",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node -e \"require('fs').copyFileSync('src/db/schema.sql','dist/db/schema.sql')\"",
     "start": "node dist/index.js",
     "db:init": "tsx src/db/init.ts"
   },

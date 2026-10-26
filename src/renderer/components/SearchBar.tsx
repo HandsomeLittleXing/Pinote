@@ -26,6 +26,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ value, onChange }) => {
         className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle"
       />
       <input
+        id="sticker-search"
         type="text"
         value={value}
         onChange={handleChange}

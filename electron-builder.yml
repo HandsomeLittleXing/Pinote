@@ -18,6 +18,9 @@ win:
       arch: x64
   artifactName: "电脑便签-Setup-${version}.${ext}"
   forceCodeSigning: false
+  # 跳过签名与 exe 图标/版本信息改写（该步骤依赖 winCodeSign，在无符号链接权限的
+  # Windows 账号下会解压失败）。安装包与程序功能不受影响。
+  signAndEditExecutable: false
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: false

@@ -1,0 +1,20 @@
+[Unit]
+Description=StickerNote Sync Server
+After=network.target mysql.service
+
+[Service]
+Type=simple
+# 按实际部署路径调整
+WorkingDirectory=/opt/stickernote-sync
+EnvironmentFile=/opt/stickernote-sync/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+# 限制运行权限
+User=stickernote
+Group=stickernote
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

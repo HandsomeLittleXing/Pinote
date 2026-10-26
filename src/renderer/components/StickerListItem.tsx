@@ -1,122 +1,179 @@
-import React, { useCallback, useState } from 'react';
-import { Bell, Eye, EyeOff, Pin, Trash2 } from 'lucide-react';
+import React from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/zh-cn';
-import { ConfirmDialog } from './ConfirmDialog';
+import { Bell, Copy, Ellipsis, Eye, EyeOff, Pin, PinOff, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './ui/DropdownMenu';
 import { IconButton } from './ui/IconButton';
+import { getBackgroundColor } from '../utils/colors';
 import { extractTitle } from '../utils/position';
-import { getTextColor } from '../utils/colors';
+import { escapeRegExp, extractSnippet, getChecklistProgress } from '../utils/note';
 import type { Sticker } from '../../shared/types';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
 
-interface StickerListItemProps {
-  sticker: Sticker;
-  onFocus: (id: string) => void;
-  onDelete: (id: string) => void;
-  onToggleVisible: (id: string) => void;
+interface HighlightProps {
+  text: string;
+  query: string;
 }
 
+/** 搜索命中高亮（文本已做过标签剥离，安全） */
+const Highlight: React.FC<HighlightProps> = ({ text, query }) => {
+  const trimmed = query.trim();
+  if (!trimmed) return <>{text}</>;
+
+  const parts = text.split(new RegExp(`(${escapeRegExp(trimmed)})`, 'ig'));
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.toLowerCase() === trimmed.toLowerCase() ? (
+          <mark key={index} className="rounded-sm bg-accent/20 px-0.5 text-ink">
+            {part}
+          </mark>
+        ) : (
+          <React.Fragment key={index}>{part}</React.Fragment>
+        )
+      )}
+    </>
+  );
+};
+
+interface StickerListItemProps {
+  sticker: Sticker;
+  isDark: boolean;
+  query: string;
+  onFocus: (id: string) => void;
+  onDelete: (sticker: Sticker) => void;
+  onToggleVisible: (id: string) => void;
+  onTogglePin: (id: string) => void;
+  onCopy: (sticker: Sticker) => void;
+}
+
+/** 列表卡片 */
 export const StickerListItem: React.FC<StickerListItemProps> = ({
   sticker,
+  isDark,
+  query,
   onFocus,
   onDelete,
   onToggleVisible,
+  onTogglePin,
+  onCopy,
 }) => {
-  const [showConfirm, setShowConfirm] = useState(false);
   const title = extractTitle(sticker.content);
-  const timeAgo = dayjs(sticker.createdAt).fromNow();
-
-  const handleDelete = useCallback(() => {
-    setShowConfirm(true);
-  }, []);
-
-  const handleConfirmDelete = useCallback(() => {
-    setShowConfirm(false);
-    onDelete(sticker.id);
-  }, [sticker.id, onDelete]);
+  const snippet = extractSnippet(sticker.content, title, 120);
+  const progress = getChecklistProgress(sticker.content);
+  const timeAgo = dayjs(sticker.updatedAt).fromNow();
+  const color = getBackgroundColor(sticker.color, isDark);
 
   return (
-    <>
-      <div
-        className="group flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-3 transition-all duration-200 hover:border-line/10 hover:bg-surface hover:shadow-glass"
-        onClick={() => onFocus(sticker.id)}
-      >
-        {/* 颜色标识 */}
-        <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg shadow-sm"
-          style={{
-            backgroundColor: sticker.color,
-            color: getTextColor(sticker.color, false),
-          }}
-        >
-          {sticker.isPinned ? <Pin size={14} /> : title.charAt(0)}
-        </div>
-
-        {/* 内容 */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate text-sm font-medium text-ink">{title}</span>
-            <span className="flex-shrink-0 text-xs tabular-nums text-ink-subtle">{timeAgo}</span>
-          </div>
-          <div className="mt-1 flex items-center gap-2">
-            {sticker.tags.length > 0 && (
-              <div className="flex gap-1">
-                {sticker.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-md bg-accent/10 px-1.5 py-0.5 text-xs text-accent"
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {sticker.tags.length > 3 && (
-                  <span className="text-xs text-ink-subtle">+{sticker.tags.length - 3}</span>
-                )}
-              </div>
-            )}
-            {sticker.reminder && !sticker.reminderTriggered && (
-              <Bell size={12} className="text-warning" />
-            )}
-          </div>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex flex-shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <IconButton
-            size="sm"
-            label={sticker.isVisible ? '隐藏便签' : '显示便签'}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleVisible(sticker.id);
-            }}
-          >
-            {sticker.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-          </IconButton>
-          <IconButton
-            size="sm"
-            label="删除便签"
-            danger
-            onClick={(event) => {
-              event.stopPropagation();
-              handleDelete();
-            }}
-          >
-            <Trash2 size={14} />
-          </IconButton>
+    <article
+      role="button"
+      tabIndex={0}
+      aria-label={`打开便签：${title}`}
+      onClick={() => onFocus(sticker.id)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onFocus(sticker.id);
+        } else if (event.key === 'Delete') {
+          event.preventDefault();
+          onDelete(sticker);
+        }
+      }}
+      className="group relative flex cursor-pointer flex-col gap-2.5 rounded-xl border border-line/10 bg-surface p-3.5 text-left transition-all duration-200 hover:-translate-y-px hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45"
+    >
+      <div className="flex items-start gap-2">
+        <span
+          className="mt-1 h-2 w-2 shrink-0 rounded-full shadow-sm"
+          style={{ backgroundColor: color }}
+        />
+        <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+          <Highlight text={title} query={query} />
+        </h3>
+        {sticker.isPinned && <Pin size={13} className="mt-0.5 shrink-0 text-accent" />}
+        {sticker.reminder && !sticker.reminderTriggered && (
+          <Bell size={13} className="mt-0.5 shrink-0 text-warning" />
+        )}
+        <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                size="sm"
+                label="便签操作"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <Ellipsis size={14} />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => onToggleVisible(sticker.id)}>
+                {sticker.isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                {sticker.isVisible ? '隐藏' : '显示'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onTogglePin(sticker.id)}>
+                {sticker.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                {sticker.isPinned ? '取消置顶' : '置顶'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onCopy(sticker)}>
+                <Copy size={14} /> 复制内容
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDelete(sticker)}
+                className="data-[highlighted]:bg-danger/10 data-[highlighted]:text-danger"
+              >
+                <Trash2 size={14} /> 删除
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      <ConfirmDialog
-        open={showConfirm}
-        title="删除便签"
-        message={`确定要删除「${title}」吗？此操作不可恢复。`}
-        confirmLabel="删除"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowConfirm(false)}
-      />
-    </>
+      {snippet && (
+        <p className="line-clamp-2 text-xs leading-relaxed text-ink-muted">
+          <Highlight text={snippet} query={query} />
+        </p>
+      )}
+
+      {progress.total > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink/10">
+            <div
+              className="h-full rounded-full bg-accent"
+              style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
+            />
+          </div>
+          <span className="text-[11px] tabular-nums text-ink-subtle">
+            {progress.done}/{progress.total}
+          </span>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap gap-1">
+          {sticker.tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-md bg-accent/10 px-1.5 py-0.5 text-[11px] text-accent"
+            >
+              {tag}
+            </span>
+          ))}
+          {sticker.tags.length > 3 && (
+            <span className="text-[11px] text-ink-subtle">+{sticker.tags.length - 3}</span>
+          )}
+        </div>
+        <span className="shrink-0 text-[11px] tabular-nums text-ink-subtle">{timeAgo}</span>
+      </div>
+    </article>
   );
 };

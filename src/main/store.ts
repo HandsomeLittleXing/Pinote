@@ -2,6 +2,7 @@ import Store from 'electron-store';
 import { v4 as uuidv4 } from 'uuid';
 import type { Sticker, AppSettings, StickerColor, WindowState, ExportData, ImportMode } from '../shared/types';
 import { DEFAULT_SETTINGS } from '../shared/types';
+import { normalizeStickerColor } from '../shared/palette';
 
 interface StoreSchema {
   stickers: Sticker[];
@@ -53,7 +54,7 @@ export class StickerStore {
     const sticker: Sticker = {
       id: uuidv4(),
       content: partial?.content ?? '',
-      color: partial?.color ?? settings.defaultColor,
+      color: normalizeStickerColor(partial?.color ?? settings.defaultColor),
       tags: partial?.tags ?? [],
       isPinned: partial?.isPinned ?? false,
       isVisible: true,
@@ -106,6 +107,35 @@ export class StickerStore {
       throw new Error(`Sticker not found: ${id}`);
     }
     this.updateSticker(id, { deletedAt: new Date().toISOString(), isVisible: false });
+  }
+
+  /** 获取已软删除的便签（回收站），按删除时间倒序 */
+  getDeletedStickers(): Sticker[] {
+    return this.getAllStickersRaw()
+      .filter((sticker) => !!sticker.deletedAt)
+      .sort(
+        (a, b) =>
+          new Date(b.deletedAt ?? 0).getTime() - new Date(a.deletedAt ?? 0).getTime()
+      );
+  }
+
+  /** 恢复已软删除的便签 */
+  restoreSticker(id: string): Sticker {
+    const stickers = this.getAllStickersRaw();
+    const index = stickers.findIndex((s) => s.id === id);
+    if (index === -1) {
+      throw new Error(`Sticker not found: ${id}`);
+    }
+
+    const restored: Sticker = {
+      ...stickers[index],
+      deletedAt: null,
+      isVisible: true,
+      updatedAt: new Date().toISOString(),
+    };
+    stickers[index] = restored;
+    this.store.set('stickers', stickers);
+    return restored;
   }
 
   /** 获取全局设置 */

@@ -25,16 +25,15 @@ export function useTheme() {
   useEffect(() => {
     fetchTheme();
 
+    // 主进程广播的是最终生效主题，直接采用即可（手动/跟随系统都适用）
     const unsubscribe = getApi().theme.onChanged((theme: string) => {
-      if (themeMode === 'system') {
-        setIsDark(theme === 'dark');
-      }
+      setIsDark(theme === 'dark');
     });
 
     return () => {
       unsubscribe();
     };
-  }, [fetchTheme, themeMode]);
+  }, [fetchTheme]);
 
   // 把暗色 class 挂到 <html>，确保 Portal 到 body 的菜单/浮层也能继承暗色 token
   useEffect(() => {

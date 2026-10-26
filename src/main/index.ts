@@ -77,10 +77,11 @@ if (!gotSingleInstanceLock) {
 
     reminderScheduler.scheduleAllReminders();
 
-    // 监听系统主题变化
+    // 监听系统主题变化：广播有效主题并同步面板窗口标题栏
     nativeTheme.on('updated', () => {
-      const theme = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
-      broadcast('theme:changed', theme);
+      const theme = windowManager.getEffectiveTheme();
+      broadcast(IPC.THEME_CHANGED, theme);
+      windowManager.updatePanelWindowChrome(theme);
     });
 
     windowManager.restoreAllWindows();

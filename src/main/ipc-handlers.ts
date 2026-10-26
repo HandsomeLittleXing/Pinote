@@ -1,7 +1,8 @@
-import { ipcMain, BrowserWindow, nativeTheme, app } from 'electron';
+import { ipcMain, BrowserWindow, Menu, nativeTheme, app } from 'electron';
 import { execSync } from 'child_process';
 import { IPC } from '../shared/ipc-channels';
-import type { StickerColor, ImportMode, ExportData } from '../shared/types';
+import type { AppSettings, StickerColor, ImportMode, ExportData } from '../shared/types';
+import { STICKER_PALETTE, resolveStickerColor } from '../shared/palette';
 import type { StickerStore } from './store';
 import type { StickerWindowManager } from './windows';
 import type { ReminderScheduler } from './reminders';
@@ -78,6 +79,22 @@ export class IpcHandlerRegistry {
       this.broadcast(IPC.STICKER_LIST_CHANGED);
     });
 
+    ipcMain.handle(IPC.STICKER_GET_DELETED, async () => {
+      return this.store.getDeletedStickers();
+    });
+
+    ipcMain.handle(IPC.STICKER_RESTORE, async (_event: any, id: string) => {
+      const restored = this.store.restoreSticker(id);
+      this.broadcast(IPC.STICKER_LIST_CHANGED);
+      this.broadcast(IPC.STICKER_CHANGED, id);
+      return restored;
+    });
+
+    ipcMain.handle(IPC.STICKER_FOCUS, async (_event: any, id: string) => {
+      this.windowManager.focusOrShowStickerWindow(id);
+      this.broadcast(IPC.STICKER_LIST_CHANGED);
+    });
+
     ipcMain.handle(IPC.STICKER_TOGGLE_VISIBLE, async (_event: any, id: string) => {
       const sticker = this.store.getStickerById(id);
       if (!sticker) throw new Error(`Sticker not found: ${id}`);
@@ -136,36 +153,101 @@ export class IpcHandlerRegistry {
 
   private registerWindowHandlers(): void {
     ipcMain.handle(IPC.WINDOW_SAVE_STATE, async (_event: any, state: any) => {
-      const win = BrowserWindow.fromWebContents(_event.sender);
-      if (!win) return;
-      const url = win.webContents.getURL();
-      const urlObj = new URL(url);
-      const id = urlObj.searchParams.get('id');
-      if (id) {
-        this.store.saveWindowState(id, state);
-      }
+      const context = this.getWindowContext(_event);
+      if (!context) return;
+      this.store.saveWindowState(context.id, state);
     });
 
     ipcMain.handle(IPC.WINDOW_CLOSE, async (_event: any) => {
-      const win = BrowserWindow.fromWebContents(_event.sender);
-      if (win) {
-        const url = win.webContents.getURL();
-        const urlObj = new URL(url);
-        const id = urlObj.searchParams.get('id');
-        if (id) {
-          this.windowManager.hideStickerWindow(id);
-        }
+      const context = this.getWindowContext(_event);
+      if (context) {
+        this.windowManager.hideStickerWindow(context.id);
       }
+    });
+
+    ipcMain.handle(IPC.WINDOW_SET_COLLAPSED, async (_event: any, collapsed: boolean) => {
+      const context = this.getWindowContext(_event);
+      if (context) {
+        this.windowManager.setCollapsed(context.id, collapsed);
+      }
+    });
+
+    // 收起后的窗口只有 34px，Radix 浮层会被裁切，改用原生菜单
+    ipcMain.handle(IPC.WINDOW_SHOW_COLLAPSED_MENU, async (_event: any) => {
+      const context = this.getWindowContext(_event);
+      if (!context) return;
+      const { win, id } = context;
+      const sticker = this.store.getStickerById(id);
+      if (!sticker) return;
+
+      // 收起态窗口只有 34px，无法容纳 Radix 面板；换色放进原生菜单子项
+      const currentColor = resolveStickerColor(sticker.color).color;
+      const colorSubmenu = STICKER_PALETTE.map((theme) => ({
+        label: theme.name,
+        type: 'radio' as const,
+        checked: currentColor === theme.color,
+        click: () => {
+          this.store.updateSticker(id, { color: theme.color });
+          this.broadcast(IPC.STICKER_LIST_CHANGED);
+          this.broadcast(IPC.STICKER_CHANGED, id);
+        },
+      }));
+
+      const menu = Menu.buildFromTemplate([
+        {
+          label: '展开便签',
+          click: () => this.windowManager.setCollapsed(id, false),
+        },
+        {
+          label: '换色',
+          submenu: colorSubmenu,
+        },
+        {
+          label: sticker.isPinned ? '取消置顶' : '置顶',
+          click: () => {
+            this.windowManager.setStickerAlwaysOnTop(id, !sticker.isPinned);
+            this.broadcast(IPC.STICKER_LIST_CHANGED);
+            this.broadcast(IPC.STICKER_CHANGED, id);
+          },
+        },
+        { type: 'separator' },
+        {
+          label: '隐藏便签',
+          click: () => this.windowManager.hideStickerWindow(id),
+        },
+      ]);
+      menu.popup({ window: win });
     });
   }
 
+  /** 从窗口 URL 中取出便签 id，供窗口类 IPC 复用 */
+  private getWindowContext(event: any): { win: BrowserWindow; id: string } | null {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return null;
+    try {
+      const id = new URL(win.webContents.getURL()).searchParams.get('id');
+      return id ? { win, id } : null;
+    } catch {
+      return null;
+    }
+  }
+
   private registerSettingsHandlers(): void {
+    ipcMain.handle(IPC.APP_GET_VERSION, async () => {
+      return app.getVersion();
+    });
+
     ipcMain.handle(IPC.SETTINGS_GET, async () => {
       return this.store.getSettings();
     });
 
+    ipcMain.handle(IPC.SHORTCUTS_SET_RECORDING, async (_event: any, recording: boolean) => {
+      this.shortcutManager.setRecording(recording);
+    });
+
     ipcMain.handle(IPC.SETTINGS_SET, async (_event: any, settings: any) => {
       const oldSettings = this.store.getSettings();
+      const mergedSettings: AppSettings = { ...oldSettings, ...settings };
 
       // 同步开关先于设置落库执行：开启失败（地址为空/注册失败）时中止保存，避免部分生效
       if (typeof settings.syncEnabled === 'boolean') {
@@ -175,13 +257,26 @@ export class IpcHandlerRegistry {
         }
       }
 
+      // 快捷键先试注册：失败则不落库，并恢复旧快捷键
+      if (
+        oldSettings.shortcutNew !== mergedSettings.shortcutNew ||
+        oldSettings.shortcutList !== mergedSettings.shortcutList
+      ) {
+        const failed = this.shortcutManager.updateShortcuts(mergedSettings);
+        if (failed.length > 0) {
+          throw new Error(`快捷键已被占用：${failed.join('、')}`);
+        }
+      }
+
       // 合并保存（支持批量更新）
       this.store.setSettings(settings);
       const newSettings = this.store.getSettings();
 
-      // 快捷键变更
-      if (oldSettings.shortcutNew !== newSettings.shortcutNew || oldSettings.shortcutList !== newSettings.shortcutList) {
-        this.shortcutManager.updateShortcuts(newSettings);
+      // 主题变化：广播有效主题，并同步列表/设置窗口的标题栏覆盖层
+      if (oldSettings.themeMode !== newSettings.themeMode) {
+        const theme = this.windowManager.getEffectiveTheme();
+        this.broadcast(IPC.THEME_CHANGED, theme);
+        this.windowManager.updatePanelWindowChrome(theme);
       }
 
       // 开机自启动（写注册表，用安装目录路径）

@@ -1,5 +1,5 @@
 import React from 'react';
-import { COLOR_THEMES, getBackgroundColor } from '../utils/colors';
+import { COLOR_THEMES, getBackgroundColor, resolveStickerColor } from '../utils/colors';
 import type { StickerColor } from '../../shared/types';
 
 interface ColorPickerProps {
@@ -21,7 +21,9 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({ currentColor, onColorC
               key={theme.color}
               type="button"
               aria-label={theme.name}
-              className={`color-dot ${currentColor === theme.color ? 'active' : ''}`}
+              className={`color-dot ${
+                resolveStickerColor(currentColor).color === theme.color ? 'active' : ''
+              }`}
               style={{ backgroundColor: bg }}
               onClick={() => onColorChange(theme.color)}
               title={theme.name}
