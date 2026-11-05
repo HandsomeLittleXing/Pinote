@@ -11,6 +11,11 @@ import type {
   SyncStatus,
   SyncDevice,
   PairingCodeResult,
+  AIStatus,
+  AIAnnotateRequest,
+  AIAnnotateResponse,
+  AIRewriteRequest,
+  AIRewriteResponse,
 } from '../shared/types';
 
 const api: PreloadAPI = {
@@ -102,6 +107,15 @@ const api: PreloadAPI = {
     set(settings: Partial<AppSettings>): Promise<void> {
       return ipcRenderer.invoke(IPC.SETTINGS_SET, settings);
     },
+    onChanged(callback: (settings: AppSettings) => void): () => void {
+      const handler = (_event: any, settings: AppSettings) => {
+        callback(settings);
+      };
+      ipcRenderer.on(IPC.SETTINGS_CHANGED, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.SETTINGS_CHANGED, handler);
+      };
+    },
   },
   theme: {
     getCurrent(): Promise<string> {
@@ -133,6 +147,26 @@ const api: PreloadAPI = {
   app: {
     getVersion(): Promise<string> {
       return ipcRenderer.invoke(IPC.APP_GET_VERSION);
+    },
+  },
+  ai: {
+    getStatus(): Promise<AIStatus> {
+      return ipcRenderer.invoke(IPC.AI_GET_STATUS);
+    },
+    saveKey(apiKey: string): Promise<AIStatus> {
+      return ipcRenderer.invoke(IPC.AI_SAVE_KEY, apiKey);
+    },
+    testKey(): Promise<void> {
+      return ipcRenderer.invoke(IPC.AI_TEST_KEY);
+    },
+    deleteKey(): Promise<AIStatus> {
+      return ipcRenderer.invoke(IPC.AI_DELETE_KEY);
+    },
+    rewrite(request: AIRewriteRequest): Promise<AIRewriteResponse> {
+      return ipcRenderer.invoke(IPC.AI_REWRITE, request);
+    },
+    annotate(request: AIAnnotateRequest): Promise<AIAnnotateResponse> {
+      return ipcRenderer.invoke(IPC.AI_ANNOTATE, request);
     },
   },
   sync: {

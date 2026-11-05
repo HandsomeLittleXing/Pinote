@@ -282,13 +282,13 @@ export default function PairingScreen({ onPaired }: Props) {
               ]}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={theme.colors.onAccent} />
               ) : (
                 <>
-                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600' }}>
+                  <Text style={{ color: theme.colors.onAccent, fontSize: 15, fontWeight: '600' }}>
                     确认配对
                   </Text>
-                  <ArrowRight size={16} color="#FFFFFF" />
+                  <ArrowRight size={16} color={theme.colors.onAccent} />
                 </>
               )}
             </Pressable>

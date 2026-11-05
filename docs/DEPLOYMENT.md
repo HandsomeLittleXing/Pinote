@@ -242,9 +242,22 @@ DB_NAME=sticker_note_sync
 PORT=4000                  # 服务监听端口
 PAIRING_CODE_TTL_SECONDS=300
 TRUST_PROXY=0              # 部署在 Nginx 后面时设为 1
+
+# AI 整理（DeepSeek / 任意 OpenAI 兼容接口）
+LLM_BASE_URL=https://api.deepseek.com/v1
+AI_CREDENTIALS_MASTER_KEY=填写32字节随机值的Base64编码
+LLM_API_KEY=你的 DeepSeek API Key
+LLM_MODEL=deepseek-chat
+LLM_TIMEOUT_MS=25000
+AI_MAX_INPUT_CHARS=8000
+AI_RATE_LIMIT_SPACE_PER_MIN=8
+AI_RATE_LIMIT_IP_PER_MIN=20
+AI_MOCK=0                  # 仅本地联调设为 1，生产不要开启
 ```
 
 > `.env` 已被 `.gitignore` 忽略，**不要提交到仓库**。
+> 桌面和手机任一端可在已配对的同步空间设置 AI Key。服务端用 `AI_CREDENTIALS_MASTER_KEY` 通过 AES-256-GCM 加密保存；客户端不持久化明文。`LLM_API_KEY` 作为未配置空间 Key 时的后备。配置 Key 的请求必须经 HTTPS，直连 localhost 开发环境例外。反向代理终止 TLS 时设置 `TRUST_PROXY=1`，并确保代理是唯一可信入口。主密钥需独立备份；丢失后原空间 Key 无法解密，需用户重新输入。运行 `npm run db:migrate` 前先备份目标库，新表迁移幂等；回退旧服务端前保留 `ai_credentials` 表和服务器默认 Key，勿自动删除用户凭据。
+> 已有数据库升级到本版本后，需执行一次 `npm run db:migrate`（或服务器上的 `node dist/db/migrate.js`）为 `stickers` 表补 `ai JSON` 列。
 
 ---
 

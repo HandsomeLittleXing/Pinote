@@ -1,6 +1,11 @@
 import Store from 'electron-store';
 import os from 'os';
 import type {
+  AIAnnotateRequest,
+  AIAnnotateResponse,
+  AIStatus,
+  AIRewriteRequest,
+  AIRewriteResponse,
   AppSettings,
   Sticker,
   SyncStatus,
@@ -8,6 +13,7 @@ import type {
   PairingCodeResult,
 } from '../shared/types';
 import type { StickerStore } from './store';
+import { isSecureAiKeyServerUrl } from '../shared/aiKeyTransport';
 
 interface SyncCredentials {
   serverUrl: string;
@@ -403,6 +409,101 @@ export class SyncManager {
     }
 
     return changed;
+  }
+
+  /** AI 服务状态；未配对/未启用时返回未配置，不抛错 */
+  async getAiStatus(): Promise<AIStatus> {
+    const creds = this.getCredentials();
+    if (!creds.token || !creds.serverUrl) {
+      return { configured: false, model: '' };
+    }
+    return this.aiRequest('/ai/status', 'GET');
+  }
+
+  private async aiRequest<T>(path: string, method: string, body?: unknown): Promise<T> {
+    const creds = this.getCredentials();
+    if (!creds.token || !creds.serverUrl) throw new Error('请先完成同步配对');
+    if (path === '/ai/key' && !isSecureAiKeyServerUrl(creds.serverUrl)) {
+      throw new Error('设置 AI Key 需要 HTTPS 连接，请先修改同步服务器地址');
+    }
+    const res = await fetch(`${creds.serverUrl}${path}`, {
+      method,
+      ...(path === '/ai/key' ? { redirect: 'error' as const } : {}),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${creds.token}` },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({})) as { error?: string };
+      const messages: Record<string, string> = {
+        https_required: '设置 AI Key 需要 HTTPS 连接',
+        master_key_unavailable: '服务器尚未配置 AI 凭据主密钥',
+        invalid_api_key: '请输入有效的 API Key',
+        ai_not_configured: '请先在桌面或手机设置 AI Key',
+        ai_timeout: 'AI 响应超时，请稍后重试',
+        invalid_ai_output: 'AI 返回内容无效，请重试',
+        text_too_long: '便签太长，暂时无法 AI 整理',
+        content_hash_mismatch: '正文已变化，请重新整理',
+        invalid_ai_key: 'API Key 无效，请在设置中更新',
+      };
+      throw new Error(messages[payload.error || ''] ||
+        (res.status === 429 ? 'AI 调用太频繁，请稍后再试' : `AI 请求失败 (${res.status})`));
+    }
+    return res.json() as Promise<T>;
+  }
+
+  async saveAiKey(apiKey: string): Promise<AIStatus> {
+    return this.aiRequest('/ai/key', 'PUT', { apiKey });
+  }
+
+  async testAiKey(): Promise<void> {
+    await this.aiRequest('/ai/key/test', 'POST');
+  }
+
+  async deleteAiKey(): Promise<AIStatus> {
+    return this.aiRequest('/ai/key', 'DELETE');
+  }
+
+  async rewrite(request: AIRewriteRequest): Promise<AIRewriteResponse> {
+    return this.aiRequest('/ai/rewrite', 'POST', request);
+  }
+
+  /** 通过主进程调用服务器 AI 代理（Key 只在服务器） */
+  async annotate(request: AIAnnotateRequest): Promise<AIAnnotateResponse> {
+    const creds = this.getCredentials();
+    if (!creds.token || !creds.serverUrl) {
+      throw new Error('请先开启并完成手机同步配对');
+    }
+    const res = await fetch(`${creds.serverUrl}/ai/annotate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${creds.token}`,
+      },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) {
+      let code = '';
+      try {
+        const body = (await res.json()) as { error?: string };
+        code = body.error ?? '';
+      } catch {
+        // ignore
+      }
+      if (res.status === 503 || code === 'ai_not_configured') {
+        throw new Error('请先在桌面或手机设置 AI Key');
+      }
+      if (res.status === 429) {
+        throw new Error('AI 调用太频繁，请稍后再试');
+      }
+      if (res.status === 413) {
+        throw new Error('便签太长，暂时无法 AI 整理');
+      }
+      if (res.status === 504) {
+        throw new Error('AI 响应超时，请稍后重试');
+      }
+      throw new Error(`AI 整理失败 (${res.status})${code ? `: ${code}` : ''}`);
+    }
+    return (await res.json()) as AIAnnotateResponse;
   }
 
   private async request(path: string, init: RequestInit): Promise<unknown> {

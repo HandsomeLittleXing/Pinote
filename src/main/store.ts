@@ -2,11 +2,21 @@ import Store from 'electron-store';
 import { v4 as uuidv4 } from 'uuid';
 import type { Sticker, AppSettings, StickerColor, WindowState, ExportData, ImportMode } from '../shared/types';
 import { DEFAULT_SETTINGS } from '../shared/types';
+import { normalizeAIAnnotation } from '../shared/ai';
 import { normalizeStickerColor } from '../shared/palette';
+import { normalizeSkinId } from '../shared/skins';
 
 interface StoreSchema {
   stickers: Sticker[];
   settings: AppSettings;
+}
+
+/** 兼容旧版本数据：补齐 ai 字段，并把 AI JSON 归一化 */
+function normalizeSticker(sticker: Sticker): Sticker {
+  return {
+    ...sticker,
+    ai: normalizeAIAnnotation((sticker as Partial<Sticker>).ai),
+  };
 }
 
 /** 便签数据存储管理类 */
@@ -25,12 +35,12 @@ export class StickerStore {
 
   /** 获取所有未删除的便签（供 UI 使用） */
   getAllStickers(): Sticker[] {
-    return this.store.get('stickers', []).filter((s) => !s.deletedAt);
+    return this.store.get('stickers', []).map(normalizeSticker).filter((s) => !s.deletedAt);
   }
 
   /** 获取包括已删除（tombstone）的全部便签（供同步使用） */
   getAllStickersRaw(): Sticker[] {
-    return this.store.get('stickers', []);
+    return this.store.get('stickers', []).map(normalizeSticker);
   }
 
   /** 根据 ID 获取便签（不含已删除） */
@@ -70,6 +80,7 @@ export class StickerStore {
         width: 240,
         height: 200,
       },
+      ai: normalizeAIAnnotation(partial?.ai),
     };
 
     stickers.push(sticker);
@@ -138,15 +149,19 @@ export class StickerStore {
     return restored;
   }
 
-  /** 获取全局设置 */
+  /** 获取全局设置（合并默认值，兼容旧版本缺字段） */
   getSettings(): AppSettings {
-    return this.store.get('settings', { ...DEFAULT_SETTINGS });
+    const stored = this.store.get('settings') as Partial<AppSettings> | undefined;
+    const merged = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+    merged.skin = normalizeSkinId(merged.skin);
+    return merged;
   }
 
   /** 更新全局设置 */
   setSettings(settings: Partial<AppSettings>): void {
     const current = this.getSettings();
     const updated = { ...current, ...settings };
+    updated.skin = normalizeSkinId(updated.skin);
     this.store.set('settings', updated);
   }
 
@@ -167,15 +182,19 @@ export class StickerStore {
     }
 
     if (mode === 'overwrite') {
-      this.store.set('stickers', data.stickers);
+      this.store.set('stickers', data.stickers.map(normalizeSticker));
       if (data.settings) {
-        this.store.set('settings', data.settings);
+        const merged = { ...DEFAULT_SETTINGS, ...data.settings };
+        merged.skin = normalizeSkinId(merged.skin);
+        this.store.set('settings', merged);
       }
     } else {
       // merge 模式：追加新便签
       const existing = this.getAllStickers();
       const existingIds = new Set(existing.map((s) => s.id));
-      const newStickers = data.stickers.filter((s) => !existingIds.has(s.id));
+      const newStickers = data.stickers
+        .filter((s) => !existingIds.has(s.id))
+        .map(normalizeSticker);
       this.store.set('stickers', [...existing, ...newStickers]);
     }
   }
@@ -202,10 +221,20 @@ export class StickerStore {
   upsertFromSync(remote: Sticker): void {
     const stickers = this.getAllStickersRaw();
     const index = stickers.findIndex((s) => s.id === remote.id);
+    const normalized = normalizeSticker(remote);
     if (index === -1) {
-      stickers.push(remote);
+      stickers.push(normalized);
     } else {
-      stickers[index] = remote;
+      const existing = stickers[index];
+      // 旧客户端不携带 ai 字段：内容未变时保留本地已有的 AI 结果
+      const remoteHasAI = Object.prototype.hasOwnProperty.call(remote, 'ai');
+      stickers[index] = {
+        ...normalized,
+        ai:
+          !remoteHasAI && existing.content === normalized.content
+            ? existing.ai
+            : normalized.ai,
+      };
     }
     this.store.set('stickers', stickers);
   }

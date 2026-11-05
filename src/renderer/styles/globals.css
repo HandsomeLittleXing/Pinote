@@ -49,7 +49,7 @@ body,
 
 /* 选中文本 */
 ::selection {
-  background: rgb(var(--accent) / 0.25);
+  background: rgb(var(--selection) / 0.42);
 }
 
 /* 禁止文本选择（编辑区除外） */
@@ -101,6 +101,436 @@ textarea:focus {
 
 .animate-scaleIn {
   animation: scaleIn var(--dur-base) var(--ease-out);
+}
+
+/* ==========================================
+   皮肤氛围层 / 小墨 / 语义标注
+   ========================================== */
+
+.skin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.skin-backdrop[data-backdrop-skin='glass'] {
+  background: transparent;
+}
+
+.skin-blob {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(2px);
+}
+
+.skin-blob--a {
+  width: 380px;
+  height: 380px;
+  top: -130px;
+  right: -90px;
+  background: radial-gradient(circle at 30% 30%, rgb(var(--brand-primary) / 0.34), transparent 68%);
+  animation: skinDriftA 19s ease-in-out infinite alternate;
+}
+
+.skin-blob--b {
+  width: 300px;
+  height: 300px;
+  bottom: 70px;
+  left: -110px;
+  background: radial-gradient(circle at 60% 40%, rgb(var(--brand-secondary) / 0.28), transparent 68%);
+  animation: skinDriftB 23s ease-in-out infinite alternate;
+}
+
+.skin-blob--c {
+  width: 220px;
+  height: 220px;
+  top: 38%;
+  left: 42%;
+  background: radial-gradient(circle at 50% 50%, rgb(var(--brand-tertiary) / 0.22), transparent 70%);
+  animation: skinDriftA 27s ease-in-out infinite alternate-reverse;
+}
+
+.vellum-sheet {
+  position: absolute;
+  border: 1px solid rgb(var(--brand-primary) / 0.14);
+  border-radius: 28px;
+  backdrop-filter: blur(1px);
+}
+
+.vellum-sheet--a {
+  width: 68%;
+  height: 58%;
+  top: -16%;
+  right: -12%;
+  transform: rotate(-11deg);
+  background: linear-gradient(135deg, rgb(var(--brand-primary) / 0.12), transparent 62%);
+}
+
+.vellum-sheet--b {
+  width: 56%;
+  height: 48%;
+  bottom: -18%;
+  left: -10%;
+  transform: rotate(8deg);
+  border-color: rgb(var(--brand-secondary) / 0.18);
+  background: linear-gradient(135deg, rgb(var(--brand-secondary) / 0.12), transparent 64%);
+}
+
+.sky-grain {
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain-opacity);
+  background-image:
+    radial-gradient(rgb(var(--text) / 0.55) 0.6px, transparent 0.7px),
+    radial-gradient(rgb(var(--text) / 0.35) 0.5px, transparent 0.6px);
+  background-size: 19px 23px, 31px 27px;
+  background-position: 0 0, 7px 11px;
+  mix-blend-mode: multiply;
+}
+
+.dark .sky-grain {
+  mix-blend-mode: screen;
+}
+
+.mote-spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgb(var(--brand-tertiary) / 0.8);
+  box-shadow: 0 0 12px rgb(var(--brand-tertiary) / 0.6);
+  animation: sparkFloat 6s ease-in-out infinite alternate;
+}
+
+.mote-spark--a { top: 22%; left: 18%; }
+.mote-spark--b { top: 64%; right: 14%; animation-delay: -2.6s; }
+
+@keyframes skinDriftA {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-22px, 16px, 0) scale(1.06); }
+}
+
+@keyframes skinDriftB {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(18px, -14px, 0) scale(1.05); }
+}
+
+@keyframes sparkFloat {
+  from { transform: translateY(0); opacity: 0.45; }
+  to { transform: translateY(-10px); opacity: 0.9; }
+}
+
+/* 小墨 */
+.frost-mascot {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgb(var(--brand-secondary) / 0.95),
+    rgb(var(--brand-primary) / 0.78) 56%,
+    rgb(var(--brand-tertiary) / 0.92)
+  );
+  border: 1px solid rgb(var(--brand-tertiary) / 0.55);
+  box-shadow:
+    inset 0 1px 2px rgb(255 255 255 / 0.6),
+    0 4px 14px rgb(var(--brand-primary) / 0.28);
+}
+
+.frost-mascot__eye {
+  position: absolute;
+  top: 36%;
+  width: 20%;
+  height: 24%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  animation: frostBlink 5.6s infinite;
+}
+
+.frost-mascot__eye:nth-of-type(1) { left: 23%; }
+.frost-mascot__eye:nth-of-type(2) { right: 23%; }
+
+.frost-mascot__pupil {
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  background: #24243a;
+  transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+  transition: transform 120ms ease-out;
+}
+
+.frost-mascot--thinking .frost-mascot__pupil {
+  transform: translate(var(--eye-x, 0px), calc(var(--eye-y, 0px) - 1.5px));
+}
+
+.frost-mascot--happy .frost-mascot__eye,
+.frost-mascot--sleepy .frost-mascot__eye {
+  animation: none;
+}
+
+.frost-mascot--happy .frost-mascot__eye { height: 11%; }
+.frost-mascot--sleepy .frost-mascot__eye { height: 7%; }
+
+@keyframes frostBlink {
+  0%, 91%, 100% { transform: scaleY(1); }
+  94% { transform: scaleY(0.08); }
+}
+
+/* Vellum 列表卡的叠纸 */
+.sticker-list-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.glass-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.glass-filter-strip {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.glass-filter-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.glass-filter-strip button {
+  flex-shrink: 0;
+}
+
+.glass-note-grid > :first-child {
+  grid-column: 1 / -1;
+  min-height: 224px;
+}
+
+.glass-note-grid > :first-child > article {
+  min-height: 224px;
+}
+
+@media (max-width: 399px) {
+  .glass-note-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.glass-note-card {
+  border-radius: var(--radius-lg);
+  border-width: 1px;
+  border-color: rgb(var(--border) / 0.18);
+  background-color: rgb(var(--surface-card) / 0.92);
+  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
+  background-size: 21px 23px;
+  box-shadow: var(--shadow-glass);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.glass-note-card:hover {
+  transform: none;
+}
+
+.glass-note-card--featured {
+  --text: 244 247 249;
+  --text-muted: 207 218 224;
+  --text-subtle: 178 196 206;
+  --accent: 167 218 225;
+  --border: 240 246 250;
+  --warning: 255 214 149;
+  color: rgb(var(--text));
+  min-height: 224px;
+  padding: 20px;
+  gap: 16px;
+  border-color: rgb(255 255 255 / 0.24);
+  background-color: #263744;
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.025) 0.5px, transparent 0.7px),
+    linear-gradient(135deg, rgb(112 181 194 / 0.14), transparent 44%, rgb(173 143 186 / 0.12)),
+    linear-gradient(155deg, #354858, #22313E);
+  background-size: 21px 23px, auto, auto;
+  box-shadow: 0 2px 6px rgb(27 43 54 / 0.08), 0 16px 34px rgb(27 43 54 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.glass-note-card--featured > :last-child,
+.glass-note-card--compact > :last-child {
+  margin-top: auto;
+}
+
+.glass-note-card--featured .anno {
+  color: inherit;
+  background: rgb(255 255 255 / 0.12);
+  text-decoration-color: currentColor;
+}
+
+.glass-feature-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 70px;
+  padding: 12px 0;
+  border-top: 1px solid rgb(255 255 255 / 0.1);
+  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.glass-feature-body > p:first-child {
+  font-size: 14px;
+}
+
+.glass-note-card--featured .glass-feature-action {
+  border: 1px solid rgb(255 255 255 / 0.26);
+  color: rgb(var(--text));
+}
+
+.glass-note-card--featured .glass-feature-action:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+.glass-note-card--compact {
+  min-height: 166px;
+  padding: 14px;
+  background-image:
+    linear-gradient(145deg, color-mix(in srgb, var(--note-tint) 42%, transparent), transparent 68%),
+    radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
+  background-size: auto, 21px 23px;
+}
+
+:root.dark[data-skin='glass'] .glass-note-card--featured {
+  background-image:
+    radial-gradient(rgb(255 255 255 / 0.025) 0.5px, transparent 0.7px),
+    linear-gradient(135deg, rgb(112 181 194 / 0.16), transparent 44%, rgb(173 143 186 / 0.13)),
+    linear-gradient(155deg, #435767, #2D4050);
+}
+
+:root[data-skin='glass'] .glass-panel {
+  background: rgb(var(--surface) / 0.82);
+  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
+  background-size: 21px 23px;
+  border-color: rgb(var(--border) / 0.09);
+  box-shadow: var(--shadow-float);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-skin='glass'] :is(button:not(.color-dot):not(.rounded-full), input, select, textarea, [role='dialog']) {
+  border-radius: var(--radius-md);
+}
+
+:root[data-skin='glass'] [role='dialog'] {
+  background: rgb(var(--surface) / 0.9);
+  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
+  background-size: 21px 23px;
+  border-color: rgb(var(--border) / 0.1);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+:root[data-skin='glass'] .saas-section-surface {
+  padding: 12px 4px 22px;
+  border: 0;
+  border-bottom: 1px solid rgb(var(--border) / 0.08);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-skin='glass'] .appearance-choice {
+  border-width: 1px;
+  box-shadow: none;
+}
+
+:root[data-skin='vellum'] .sticker-list-card::before,
+:root[data-skin='vellum'] .sticker-list-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgb(var(--brand-primary) / 0.10);
+  pointer-events: none;
+}
+
+:root[data-skin='vellum'] .sticker-list-card::before {
+  transform: rotate(-1.1deg) translate(-3px, 3px);
+  background: rgb(var(--brand-primary) / 0.05);
+}
+
+:root[data-skin='vellum'] .sticker-list-card::after {
+  transform: rotate(0.8deg) translate(3px, 1px);
+  border-color: rgb(var(--brand-secondary) / 0.12);
+  background: rgb(var(--brand-secondary) / 0.05);
+}
+
+/* 语义标注 */
+.anno {
+  border-radius: 3px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  text-underline-offset: 2px;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.anno-time {
+  color: rgb(var(--ann-time));
+  background: rgb(var(--ann-time) / 0.12);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--ann-time) / 0.55);
+}
+
+.anno-place {
+  color: rgb(var(--ann-place));
+  background: rgb(var(--ann-place) / 0.10);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: rgb(var(--ann-place) / 0.5);
+}
+
+.anno-person {
+  color: rgb(var(--ann-person));
+  background: rgb(var(--ann-person) / 0.12);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--ann-person) / 0.48);
+}
+
+.anno-action {
+  color: rgb(var(--ann-action));
+  background: rgb(var(--ann-action) / 0.16);
+  font-weight: 600;
+}
+
+.anno-important {
+  color: rgb(var(--ann-important));
+  background: rgb(var(--ann-important) / 0.16);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--ann-important) / 0.45);
+}
+
+.anno--strong {
+  box-shadow: inset 0 -2px 0 rgb(var(--ann-important) / 0.35);
+}
+
+/* AI 标签：与用户标签区分，使用可读的青色系 */
+.ai-tag {
+  color: rgb(var(--ann-time));
+  border-color: rgb(var(--ann-time) / 0.35);
+  background: rgb(var(--ann-time) / 0.07);
+}
+
+.ai-tag:hover {
+  background: rgb(var(--ann-time) / 0.13);
 }
 
 /* 尊重系统“减少动态效果”设置 */

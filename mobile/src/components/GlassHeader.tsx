@@ -37,16 +37,19 @@ export function GlassHeader({ title, subtitle, left, right }: GlassHeaderProps) 
       >
         {left}
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: theme.typography.title,
-              fontWeight: '600',
-              color: theme.colors.text,
-            }}
-          >
-            {title}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                flexShrink: 1,
+                fontSize: theme.typography.title,
+                fontWeight: '600',
+                color: theme.colors.text,
+              }}
+            >
+              {title}
+            </Text>
+          </View>
           {subtitle ? (
             <Text
               style={{

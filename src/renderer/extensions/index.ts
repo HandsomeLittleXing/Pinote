@@ -3,6 +3,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import TextStyle from '@tiptap/extension-text-style';
 import { Extension } from '@tiptap/core';
+import { SemanticAnnotations } from './annotations';
 
 /** 自定义字号扩展 */
 const FontSize = Extension.create({
@@ -131,5 +132,6 @@ export function getExtensions() {
     TaskItem.configure({
       nested: true,
     }),
+    SemanticAnnotations,
   ];
 }

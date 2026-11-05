@@ -15,8 +15,9 @@ import { Ellipsis, NotebookPen, Plus, RefreshCw } from 'lucide-react-native';
 import { STICKER_PALETTE } from '@shared/palette';
 import { extractTitle, stripHtml } from '@shared/note';
 import type { Sticker } from '@shared/types';
+import { rankTags } from '@shared/tagFilters';
 import { getActiveStickers, softDeleteSticker, upsertSticker } from '../storage/db';
-import { syncNow, unpair } from '../api/syncClient';
+import { syncNow } from '../api/syncClient';
 import { ScreenBackground } from '../components/ScreenBackground';
 import { GlassHeader } from '../components/GlassHeader';
 import { GlassSurface } from '../components/GlassSurface';
@@ -25,16 +26,18 @@ import { FilterChips, type FilterOption } from '../components/FilterChips';
 import { StickerCard } from '../components/StickerCard';
 import { EmptyState } from '../components/EmptyState';
 import { StatusBadge, type SyncBadgeStatus } from '../components/StatusBadge';
+import { Mascot } from '../components/Mascot';
 import { useToast } from '../components/GlassToast';
-import { useAppTheme } from '../theme';
+import { useAppTheme, useThemeController } from '../theme';
 
 interface Props {
   onOpenSticker: (id: string) => void;
-  onUnpaired: () => void;
+  onOpenSettings: () => void;
 }
 
-export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) {
+export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Props) {
   const theme = useAppTheme();
+  const { preferences } = useThemeController();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
 
@@ -110,6 +113,7 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
       updatedAt: now,
       deletedAt: null,
       windowState: { x: 0, y: 0, width: 240, height: 200 },
+      ai: null,
     };
     await upsertSticker(sticker);
     await load();
@@ -144,29 +148,12 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
     [load, runSync, showToast]
   );
 
-  const handleUnpair = useCallback(() => {
-    Alert.alert('解除配对', '解除后将停止与电脑同步，本机数据会保留。', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '解除配对',
-        style: 'destructive',
-        onPress: async () => {
-          await unpair();
-          onUnpaired();
-        },
-      },
-    ]);
-  }, [onUnpaired]);
-
   const handleMore = useCallback(() => {
-    Alert.alert('更多', '选择操作', [
-      { text: '解除配对', style: 'destructive', onPress: handleUnpair },
-      { text: '取消', style: 'cancel' },
-    ]);
-  }, [handleUnpair]);
+    onOpenSettings();
+  }, [onOpenSettings]);
 
   const tagOptions = useMemo(
-    () => Array.from(new Set(stickers.flatMap((sticker) => sticker.tags))).sort(),
+    () => rankTags(stickers),
     [stickers]
   );
 
@@ -209,6 +196,9 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
   }, [stickers, filterKey, search]);
 
   const hasFilter = filterKey !== 'all' || search.trim().length > 0;
+  const showGlassComposition = theme.skin === 'glass' && !hasFilter && filtered.length > 0;
+  const featuredSticker = showGlassComposition ? filtered[0] : null;
+  const listData = featuredSticker ? filtered.slice(1) : filtered;
 
   const clearFilters = useCallback(() => {
     setSearch('');
@@ -222,18 +212,22 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
           title="便签"
           subtitle={`${filtered.length} 条`}
           left={
-            <View
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                backgroundColor: theme.colors.accentSoft,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <NotebookPen size={18} color={theme.colors.accent} />
-            </View>
+            theme.effects.mascot && preferences.showMascot ? (
+              <Mascot size={36} mood={syncStatus === 'syncing' ? 'thinking' : 'idle'} />
+            ) : (
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: theme.radius.sm,
+                  backgroundColor: theme.colors.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <NotebookPen size={18} color={theme.colors.accent} />
+              </View>
+            )
           }
           right={
             <>
@@ -292,22 +286,38 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
           </View>
         ) : (
           <FlatList
-            data={filtered}
+            key={showGlassComposition ? 'glass-grid' : 'standard-list'}
+            data={listData}
+            numColumns={showGlassComposition ? 2 : 1}
+            columnWrapperStyle={showGlassComposition ? { justifyContent: 'space-between' } : undefined}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <StickerCard
-                sticker={item}
-                onPress={() => onOpenSticker(item.id)}
-                onLongPress={() => handleDelete(item)}
-              />
+              <View style={showGlassComposition ? { width: '48.5%', marginBottom: 12 } : undefined}>
+                <StickerCard
+                  sticker={item}
+                  variant={showGlassComposition ? 'compact' : 'standard'}
+                  onPress={() => onOpenSticker(item.id)}
+                  onLongPress={() => handleDelete(item)}
+                />
+              </View>
             )}
+            ListHeaderComponent={featuredSticker ? (
+              <View style={{ marginBottom: 12 }}>
+                <StickerCard
+                  sticker={featuredSticker}
+                  variant="featured"
+                  onPress={() => onOpenSticker(featuredSticker.id)}
+                  onLongPress={() => handleDelete(featuredSticker)}
+                />
+              </View>
+            ) : undefined}
             contentContainerStyle={{
               flexGrow: 1,
               paddingHorizontal: theme.spacing.lg,
               paddingTop: theme.spacing.sm,
               paddingBottom: insets.bottom + 110,
             }}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+            ItemSeparatorComponent={showGlassComposition ? undefined : () => <View style={{ height: 10 }} />}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl
@@ -318,9 +328,15 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
                 progressBackgroundColor={theme.colors.surface}
               />
             }
-            ListEmptyComponent={
+            ListEmptyComponent={filtered.length === 0 ?
               <EmptyState
-                icon={<NotebookPen size={24} color={theme.colors.textMuted} />}
+                icon={
+                  theme.effects.mascot && preferences.showMascot ? (
+                    <Mascot size={64} mood="sleepy" />
+                  ) : (
+                    <NotebookPen size={24} color={theme.colors.textMuted} />
+                  )
+                }
                 title={hasFilter ? '没有匹配的便签' : '还没有便签'}
                 description={
                   hasFilter
@@ -343,7 +359,7 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
                   >
                     <Text
                       style={{
-                        color: hasFilter ? theme.colors.textMuted : '#FFFFFF',
+                        color: hasFilter ? theme.colors.textMuted : theme.colors.onAccent,
                         fontSize: 13,
                         fontWeight: '600',
                       }}
@@ -352,7 +368,7 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
                     </Text>
                   </Pressable>
                 }
-              />
+              /> : undefined
             }
           />
         )}
@@ -363,10 +379,15 @@ export default function StickerListScreen({ onOpenSticker, onUnpaired }: Props) 
         >
           <GlassSurface
             radius={999}
-            style={{ width: 58, height: 58 }}
+            blur={theme.skin !== 'glass'}
+            style={{
+              width: 58,
+              height: 58,
+              backgroundColor: theme.skin === 'glass' ? theme.colors.accent : undefined,
+            }}
             contentStyle={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Plus size={24} color={theme.colors.accent} />
+            <Plus size={24} color={theme.skin === 'glass' ? theme.colors.onAccent : theme.colors.accent} />
           </GlassSurface>
         </Pressable>
       </View>

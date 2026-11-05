@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { normalizeAIAnnotation } from '@shared/ai';
 import type { Sticker } from '@shared/types';
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
@@ -18,11 +19,17 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           reminder TEXT,
           reminderTriggered INTEGER NOT NULL,
           windowState TEXT,
+          ai TEXT,
           createdAt TEXT NOT NULL,
           updatedAt TEXT NOT NULL,
           deletedAt TEXT
         );
       `);
+      // 老版本数据库幂等升级：补 ai 列
+      const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(stickers)');
+      if (!columns.some((column) => column.name === 'ai')) {
+        await db.execAsync('ALTER TABLE stickers ADD COLUMN ai TEXT');
+      }
       return db;
     });
   }
@@ -40,9 +47,19 @@ interface StickerRow {
   reminder: string | null;
   reminderTriggered: number;
   windowState: string | null;
+  ai: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+}
+
+function parseAI(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    return normalizeAIAnnotation(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
 
 function rowToSticker(row: StickerRow): Sticker {
@@ -57,6 +74,7 @@ function rowToSticker(row: StickerRow): Sticker {
     reminder: row.reminder,
     reminderTriggered: !!row.reminderTriggered,
     windowState: row.windowState ? JSON.parse(row.windowState) : { x: 0, y: 0, width: 240, height: 200 },
+    ai: parseAI(row.ai),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     deletedAt: row.deletedAt,
@@ -90,13 +108,14 @@ export async function upsertSticker(sticker: Sticker): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `INSERT INTO stickers
-       (id, content, color, tags, isPinned, isVisible, opacity, reminder, reminderTriggered, windowState, createdAt, updatedAt, deletedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (id, content, color, tags, isPinned, isVisible, opacity, reminder, reminderTriggered, windowState, ai, createdAt, updatedAt, deletedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        content=excluded.content, color=excluded.color, tags=excluded.tags,
        isPinned=excluded.isPinned, isVisible=excluded.isVisible, opacity=excluded.opacity,
        reminder=excluded.reminder, reminderTriggered=excluded.reminderTriggered,
-       windowState=excluded.windowState, updatedAt=excluded.updatedAt, deletedAt=excluded.deletedAt`,
+       windowState=excluded.windowState, ai=excluded.ai,
+       createdAt=excluded.createdAt, updatedAt=excluded.updatedAt, deletedAt=excluded.deletedAt`,
     [
       sticker.id,
       sticker.content,
@@ -108,6 +127,7 @@ export async function upsertSticker(sticker: Sticker): Promise<void> {
       sticker.reminder,
       sticker.reminderTriggered ? 1 : 0,
       JSON.stringify(sticker.windowState),
+      sticker.ai ? JSON.stringify(sticker.ai) : null,
       sticker.createdAt,
       sticker.updatedAt,
       sticker.deletedAt,
@@ -124,5 +144,15 @@ export async function softDeleteSticker(id: string): Promise<void> {
 
 /** 写入远程同步返回的数据，直接覆盖（调用方已做过"最后写入优先"判断） */
 export async function applyRemoteSticker(remote: Sticker): Promise<void> {
-  await upsertSticker(remote);
+  const existing = await getStickerById(remote.id);
+  const remoteHasAI = Object.prototype.hasOwnProperty.call(remote, 'ai');
+  if (existing && !remoteHasAI && existing.content === remote.content) {
+    // 旧服务端/旧客户端不携带 ai：内容没变时保留本地 AI 结果
+    await upsertSticker({ ...remote, ai: existing.ai });
+    return;
+  }
+  await upsertSticker({
+    ...remote,
+    ai: normalizeAIAnnotation(remote.ai),
+  });
 }

@@ -19,6 +19,7 @@ import {
   Pin,
   PinOff,
   Redo2,
+  Sparkles,
   Tag,
   Type,
   Undo2,
@@ -29,7 +30,20 @@ import { useSticker } from '../hooks/useSticker';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
 import { getBackgroundColor, getTextColor, withAlpha, clampOpacity } from '../utils/colors';
+import { resolveGlassCardColor } from '../../shared/palette';
 import { getApi } from '../utils/api';
+import { useToast } from './ui/Toast';
+import { AiResultPanel } from './AiResultPanel';
+import { AiRewritePanel } from './AiRewritePanel';
+import { renderRewriteHtml } from '../../shared/aiRewrite';
+import type { AIRewriteResponse, AIAnnotation } from '../../shared/types';
+import {
+  computeContentHash,
+  getLocalTimeZone,
+  isAIUsable,
+  noteToPlainText,
+  adoptAiTags,
+} from '../../shared/ai';
 import { ColorPicker } from './ColorPicker';
 import { TransparencySlider } from './TransparencySlider';
 import { TagInput } from './TagInput';
@@ -59,6 +73,7 @@ type ActivePanel =
   | 'reminder'
   | 'fontColor'
   | 'fontSize'
+  | 'ai'
   | null;
 
 const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
@@ -75,12 +90,16 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
     reload,
   } = useSticker(stickerId);
 
-  const { isDark } = useTheme();
+  const { isDark, skin, aiEnabled } = useTheme();
+  const { toast } = useToast();
 
   const [editor, setEditor] = useState<Editor | null>(null);
   const [content, setContent] = useState('');
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [rewrite, setRewrite] = useState<{ sourceText: string; result: AIRewriteResponse } | null>(null);
+  const [rewriteUndo, setRewriteUndo] = useState<{ before: string; afterHash: string; ai: AIAnnotation | null } | null>(null);
 
   const handleSave = useCallback(
     async (id: string, html: string) => {
@@ -135,6 +154,157 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   }, []);
 
   useAutoSave(stickerId, content, handleSave);
+
+  // AI 结果通过 Tiptap 装饰显示；只影响视图，不写回正文
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const plainText = noteToPlainText(content);
+    const fresh = isAIUsable(sticker?.ai ?? null, plainText) ? sticker?.ai : null;
+    editor.commands.setAnnotations(fresh?.spans ?? []);
+  }, [content, editor, sticker?.ai]);
+
+  const runAI = useCallback(
+    async (force: boolean) => {
+      if (!aiEnabled) {
+        toast({
+          title: 'AI 整理未开启',
+          description: '请在设置 → 同步 → AI 整理中开启',
+          variant: 'error',
+        });
+        return;
+      }
+      if (!editor || editor.isDestroyed || aiBusy) return;
+
+      setAiBusy(true);
+      try {
+        const html = editor.getHTML();
+        await updateContent(html);
+        const plainText = noteToPlainText(html);
+        if (!plainText) {
+          toast({ title: '便签还是空的', variant: 'info' });
+          return;
+        }
+        const contentHash = computeContentHash(plainText);
+        const result = await getApi().ai.annotate({
+          plainText,
+          contentHash,
+          timezone: getLocalTimeZone(),
+          force,
+        });
+
+        const latestPlain = noteToPlainText(editor.getHTML());
+        if (computeContentHash(latestPlain) !== result.annotation.contentHash) {
+          toast({ title: '内容已变化，请重新整理', variant: 'error' });
+          return;
+        }
+
+        await getApi().sticker.update(stickerId, { ai: result.annotation });
+        await reload();
+        setActivePanel('ai');
+        toast({
+          title: result.cached ? '已使用缓存结果' : 'AI 整理完成',
+          variant: 'success',
+        });
+        void getApi().sync.syncNow().catch(() => {});
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '请稍后重试';
+        toast({
+          title: 'AI 整理失败',
+          description: message.replace(/^Error invoking remote method '[^']+': Error: /, ''),
+          variant: 'error',
+        });
+      } finally {
+        setAiBusy(false);
+      }
+    },
+    [aiBusy, aiEnabled, editor, reload, stickerId, toast, updateContent]
+  );
+
+  const handleAdoptTag = useCallback(
+    async (tag: string) => {
+      if (!sticker) return;
+      const tags = adoptAiTags(sticker.tags, [tag]);
+      if (tags.length !== sticker.tags.length) await updateTags(tags);
+    },
+    [sticker, updateTags]
+  );
+
+  const handleAdoptAllTags = useCallback(async () => {
+    if (!sticker?.ai) return;
+    const merged = adoptAiTags(sticker.tags, sticker.ai.tags);
+    if (merged.length === sticker.tags.length) return;
+    await updateTags(merged);
+  }, [sticker, updateTags]);
+
+  const runRewrite = useCallback(async () => {
+    if (!aiEnabled) { toast({ title: '请先在设置中开启 AI 整理', variant: 'error' }); return; }
+    if (!editor || editor.isDestroyed || aiBusy) return;
+    const html = editor.getHTML();
+    if (/<(?:img|iframe|video|audio|object|embed)\b/i.test(html)) {
+      toast({ title: '含媒体的便签暂不支持替换', variant: 'error' }); return;
+    }
+    const plainText = noteToPlainText(html);
+    if (!plainText) { toast({ title: '便签还是空的', variant: 'info' }); return; }
+    setAiBusy(true);
+    try {
+      await updateContent(html);
+      const result = await getApi().ai.rewrite({ plainText, contentHash: computeContentHash(plainText) });
+      if (computeContentHash(noteToPlainText(editor.getHTML())) !== result.sourceHash) {
+        toast({ title: '内容已变化，请重新整理', variant: 'error' }); return;
+      }
+      setRewrite({ sourceText: plainText, result });
+    } catch (error) {
+      toast({ title: 'AI 整理失败', description: error instanceof Error ? error.message : '请稍后重试', variant: 'error' });
+    } finally { setAiBusy(false); }
+  }, [aiEnabled, aiBusy, editor, toast, updateContent]);
+
+  const applyRewrite = useCallback(async (selectedIds: string[]) => {
+    if (!editor || !rewrite) return;
+    const before = editor.getHTML();
+    if (computeContentHash(noteToPlainText(before)) !== rewrite.result.sourceHash ||
+        /<(?:img|iframe|video|audio|object|embed)\b/i.test(before)) {
+      setRewrite(null);
+      toast({ title: '内容已变化，请重新生成', variant: 'error' }); return;
+    }
+    const html = renderRewriteHtml(rewrite.result, selectedIds);
+    try {
+      await getApi().sticker.update(stickerId, { content: html, ai: null });
+      editor.commands.setContent(html);
+      setContent(html);
+      setRewriteUndo({ before, afterHash: computeContentHash(noteToPlainText(html)), ai: sticker?.ai ?? null });
+      setRewrite(null);
+      await reload();
+      void getApi().sync.syncNow().catch(() => {});
+    } catch (error) {
+      toast({ title: '应用整理失败', description: error instanceof Error ? error.message : '请重试', variant: 'error' });
+    }
+  }, [editor, rewrite, reload, sticker?.ai, stickerId, toast]);
+
+  const undoRewrite = useCallback(async () => {
+    if (!editor || !rewriteUndo) return;
+    if (computeContentHash(noteToPlainText(editor.getHTML())) !== rewriteUndo.afterHash) {
+      setRewriteUndo(null);
+      toast({ title: '内容已变化，无法撤销本次整理', variant: 'error' }); return;
+    }
+    try {
+      await getApi().sticker.update(stickerId, { content: rewriteUndo.before, ai: rewriteUndo.ai });
+      editor.commands.setContent(rewriteUndo.before);
+      setContent(rewriteUndo.before);
+      setRewriteUndo(null);
+      await reload();
+      void getApi().sync.syncNow().catch(() => {});
+    } catch (error) {
+      toast({ title: '撤销失败', description: error instanceof Error ? error.message : '请重试', variant: 'error' });
+    }
+  }, [editor, reload, rewriteUndo, stickerId, toast]);
+
+  const handleSetReminder = useCallback(
+    async (iso: string) => {
+      await setReminder(iso);
+      toast({ title: '提醒已设置', variant: 'success' });
+    },
+    [setReminder, toast]
+  );
 
   const handleColorChange = useCallback(
     (color: StickerColor) => {
@@ -236,8 +406,9 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
     );
   }
 
+  const glass = skin === 'glass' ? resolveGlassCardColor(sticker.color, isDark) : null;
   const bgColor = getBackgroundColor(sticker.color, isDark);
-  const txtColor = getTextColor(sticker.color, isDark);
+  const txtColor = glass?.ink ?? getTextColor(sticker.color, isDark);
   const bgAlpha = clampOpacity(sticker.opacity);
   const currentFontSize = editor?.getAttributes('textStyle').fontSize as string | undefined;
   const noDrag = { WebkitAppRegion: 'no-drag' } as React.CSSProperties;
@@ -245,8 +416,10 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   return (
     <div
       className={`sticker-window no-select ${collapsed ? 'collapsed' : ''}`}
-      style={{ backgroundColor: withAlpha(bgColor, bgAlpha), color: txtColor }}
+      style={{ backgroundColor: withAlpha(bgColor, bgAlpha), color: txtColor, '--note-tint': glass?.tint, '--note-opacity': bgAlpha } as React.CSSProperties}
     >
+      {rewrite && <AiRewritePanel sourceText={rewrite.sourceText} result={rewrite.result}
+        onApply={(selected) => void applyRewrite(selected)} onClose={() => setRewrite(null)} />}
       {/* 统一工具栏：常驻收起/更多/关闭，窄窗口下不溢出 */}
       <div
         className="unified-toolbar titlebar-drag"
@@ -291,6 +464,27 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
           </div>
         )}
 
+        {!collapsed && (
+          <Tooltip label="AI 整理">
+            <IconButton
+              size="sm"
+              label="AI 整理"
+              active={activePanel === 'ai'}
+              onClick={() => {
+                if (activePanel === 'ai') {
+                  setActivePanel(null);
+                } else if (sticker.ai) {
+                  setActivePanel('ai');
+                } else {
+                  void runAI(false);
+                }
+              }}
+            >
+              {aiBusy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            </IconButton>
+          </Tooltip>
+        )}
+
         <div className="min-w-2 flex-1" />
 
         <div className="flex items-center gap-0.5" style={noDrag}>
@@ -305,11 +499,24 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
                 <span className="inline-block h-6 w-0" aria-hidden="true" />
               </PopoverAnchor>
               <PopoverContent align="end">
+                {activePanel === 'ai' && (
+                  <AiResultPanel
+                    annotation={sticker.ai}
+                    currentTags={sticker.tags}
+                    hasReminder={!!sticker.reminder}
+                    busy={aiBusy}
+                    onAdoptTag={(tag) => void handleAdoptTag(tag)}
+                    onAdoptAllTags={() => void handleAdoptAllTags()}
+                    onSetReminder={(iso) => void handleSetReminder(iso)}
+                    onRerun={() => void runAI(true)}
+                  />
+                )}
                 {activePanel === 'color' && (
                   <ColorPicker
                     currentColor={sticker.color}
                     onColorChange={handleColorChange}
                     isDark={isDark}
+                    skin={skin}
                   />
                 )}
                 {activePanel === 'opacity' && (
@@ -386,7 +593,7 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
               >
                 <span
                   className="h-3.5 w-3.5 rounded-full border border-black/10 shadow-sm dark:border-white/20"
-                  style={{ backgroundColor: bgColor }}
+                  style={{ backgroundColor: glass?.tint ?? bgColor }}
                 />
               </IconButton>
             </Tooltip>
@@ -500,6 +707,28 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
                 >
                   <Redo2 size={14} /> 重做
                 </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>智能</DropdownMenuLabel>
+                <DropdownMenuItem
+                  disabled={aiBusy}
+                  onSelect={() => {
+                    if (sticker.ai) {
+                      openPanel('ai');
+                    } else {
+                      void runAI(false);
+                    }
+                  }}
+                >
+                  <Sparkles size={14} /> AI 整理
+                  {aiBusy && <Loader2 size={13} className="ml-auto animate-spin" />}
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={aiBusy} onSelect={() => void runRewrite()}>
+                  <Sparkles size={14} /> AI 整理并补充
+                </DropdownMenuItem>
+                {rewriteUndo && <DropdownMenuItem onSelect={() => void undoRewrite()}>
+                  <Undo2 size={14} /> 撤销本次整理
+                </DropdownMenuItem>}
 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>便签</DropdownMenuLabel>

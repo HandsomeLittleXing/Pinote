@@ -1,7 +1,9 @@
-import { BrowserWindow, nativeTheme, screen } from 'electron';
-import type { Sticker, WindowState } from '../shared/types';
+import { app, BrowserWindow, nativeTheme, screen } from 'electron';
+import { join } from 'path';
+import type { SkinId, Sticker, WindowState } from '../shared/types';
 import type { StickerStore } from './store';
 import { IPC } from '../shared/ipc-channels';
+import { SKIN_NATIVE_CHROME, normalizeSkinId } from '../shared/skins';
 
 type GetPreloadPathFn = () => string;
 type GetRendererUrlFn = (query?: string) => string;
@@ -18,20 +20,6 @@ const MIN_WIDTH = 160;
 const MAX_WINDOW_SIZE = 10000;
 /** 列表/设置窗口标题栏高度 */
 const PANEL_OVERLAY_HEIGHT = 40;
-
-/** 面板窗口的标题栏覆盖层与底色 */
-const PANEL_THEME = {
-  light: {
-    overlayColor: '#FFFFFF',
-    symbolColor: '#64748B',
-    backgroundColor: '#F4F7FA',
-  },
-  dark: {
-    overlayColor: '#141E30',
-    symbolColor: '#8FA2B8',
-    backgroundColor: '#0B1220',
-  },
-} as const;
 
 /** 便签窗口管理器 */
 export class StickerWindowManager {
@@ -341,9 +329,15 @@ export class StickerWindowManager {
     return settings.themeMode;
   }
 
+  /** 当前皮肤 */
+  getEffectiveSkin(): SkinId {
+    const skin = this.store.getSettings().skin;
+    return normalizeSkinId(skin);
+  }
+
   /** 更新列表/设置窗口的原生标题栏覆盖层颜色 */
   updatePanelWindowChrome(theme: 'light' | 'dark'): void {
-    const colors = PANEL_THEME[theme];
+    const colors = SKIN_NATIVE_CHROME[this.getEffectiveSkin()][theme];
     BrowserWindow.getAllWindows().forEach((win) => {
       if (win.isDestroyed()) return;
       const url = win.webContents.getURL();
@@ -354,6 +348,7 @@ export class StickerWindowManager {
           symbolColor: colors.symbolColor,
           height: PANEL_OVERLAY_HEIGHT,
         });
+        win.setBackgroundColor(colors.backgroundColor);
       } catch (error) {
         console.error('更新标题栏覆盖层失败:', error);
       }
@@ -362,8 +357,11 @@ export class StickerWindowManager {
 
   /** 面板窗口的标题栏/底色配置 */
   private getPanelWindowOptions() {
-    const colors = PANEL_THEME[this.getEffectiveTheme()];
+    const colors = SKIN_NATIVE_CHROME[this.getEffectiveSkin()][this.getEffectiveTheme()];
     return {
+      icon: app.isPackaged
+        ? join(process.resourcesPath, 'icon.ico')
+        : join(__dirname, '../../resources/icon.ico'),
       titleBarStyle: 'hidden' as const,
       titleBarOverlay: {
         color: colors.overlayColor,

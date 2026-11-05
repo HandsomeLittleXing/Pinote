@@ -3,11 +3,14 @@ import { ArrowUpDown, NotebookPen, Plus, SearchX } from 'lucide-react';
 import { StickerListItem } from './StickerListItem';
 import { SearchBar } from './SearchBar';
 import { FilterBar, type StickerFilter } from './FilterBar';
+import { rankTags } from '../../shared/tagFilters';
 import { WindowChrome } from './WindowChrome';
 import { Button } from './ui/Button';
 import { EmptyState } from './ui/EmptyState';
 import { Skeleton } from './ui/Skeleton';
 import { useToast } from './ui/Toast';
+import { SkinBackdrop } from './SkinBackdrop';
+import { Mascot } from './Mascot';
 import { useTheme } from '../hooks/useTheme';
 import {
   DropdownMenu,
@@ -19,7 +22,7 @@ import {
 import { getApi } from '../utils/api';
 import { extractTitle } from '../utils/position';
 import { getChecklistProgress, stripHtml } from '../utils/note';
-import type { Sticker } from '../../shared/types';
+import type { AppSettings, Sticker } from '../../shared/types';
 
 type SortMode = 'updated' | 'created' | 'pinned';
 
@@ -39,11 +42,12 @@ const SkeletonCard: React.FC = () => (
 
 const StickerList: React.FC = () => {
   const [stickers, setStickers] = useState<Sticker[]>([]);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<StickerFilter>({ type: 'all' });
   const [sort, setSort] = useState<SortMode>('updated');
-  const { isDark } = useTheme();
+  const { isDark, skin } = useTheme();
   const { toast } = useToast();
 
   const loadStickers = useCallback(async () => {
@@ -59,10 +63,18 @@ const StickerList: React.FC = () => {
 
   useEffect(() => {
     loadStickers();
+    void getApi().settings.get().then(setSettings).catch(() => {});
     const unsubscribe = getApi().sticker.onListChanged(() => {
       loadStickers();
     });
-    return () => unsubscribe();
+    const unsubscribeSettings = getApi().settings.onChanged((next) => {
+      setSettings(next);
+      loadStickers();
+    });
+    return () => {
+      unsubscribe();
+      unsubscribeSettings();
+    };
   }, [loadStickers]);
 
   // Ctrl/Cmd+K 聚焦搜索
@@ -78,9 +90,7 @@ const StickerList: React.FC = () => {
   }, []);
 
   const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    stickers.forEach((sticker) => sticker.tags.forEach((tag) => tagSet.add(tag)));
-    return Array.from(tagSet).sort();
+    return rankTags(stickers);
   }, [stickers]);
 
   const visibleStickers = useMemo(() => {
@@ -235,13 +245,16 @@ const StickerList: React.FC = () => {
   }, []);
 
   const hasFilters = searchQuery.trim().length > 0 || filter.type !== 'all';
+  const showGlassComposition = skin === 'glass' && !hasFilters;
 
   return (
-    <div className="flex h-screen w-full flex-col bg-canvas">
+    <div className="relative flex h-screen w-full flex-col bg-canvas">
+      <SkinBackdrop />
       <WindowChrome
-        icon={<NotebookPen size={17} />}
+        icon={skin === 'mote' ? <Mascot size={26} /> : <NotebookPen size={17} />}
         title="便签列表"
         subtitle={`${visibleStickers.length} 条`}
+        className="relative z-10"
         actions={
           <Button size="sm" onClick={handleCreate}>
             <Plus size={14} /> 新建
@@ -249,7 +262,7 @@ const StickerList: React.FC = () => {
         }
       />
 
-      <div className="flex items-center gap-2 border-b border-line/10 bg-surface px-4 py-2.5">
+      <div className="relative z-10 flex items-center gap-2 border-b border-line/10 bg-surface px-4 py-2.5">
         <div className="min-w-0 flex-1">
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
@@ -274,13 +287,18 @@ const StickerList: React.FC = () => {
         </DropdownMenu>
       </div>
 
-      <div className="border-b border-line/10 bg-surface px-4 py-2">
-        <FilterBar tags={allTags} filter={filter} onChange={setFilter} />
+      <div className={`relative z-10 border-b border-line/10 bg-surface px-4 py-2 ${skin === 'glass' ? 'glass-filter-strip' : ''}`}>
+        <FilterBar
+          tags={allTags}
+          filter={filter}
+          onChange={setFilter}
+          className={skin === 'glass' ? 'w-max min-w-full flex-nowrap' : undefined}
+        />
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="relative z-10 flex-1 overflow-y-auto p-4">
         {loading ? (
-          <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
+          <div className={showGlassComposition ? 'glass-note-grid' : 'grid grid-cols-1 gap-3 min-[520px]:grid-cols-2'}>
             {[0, 1, 2, 3].map((item) => (
               <SkeletonCard key={item} />
             ))}
@@ -299,7 +317,7 @@ const StickerList: React.FC = () => {
             />
           ) : (
             <EmptyState
-              icon={<NotebookPen size={22} />}
+              icon={skin === 'mote' ? <Mascot size={54} mood="sleepy" /> : <NotebookPen size={22} />}
               title="还没有便签"
               description="点击新建，随手记下第一张便签"
               action={
@@ -310,13 +328,17 @@ const StickerList: React.FC = () => {
             />
           )
         ) : (
-          <div className="grid grid-cols-1 gap-3 min-[520px]:grid-cols-2">
-            {visibleStickers.map((sticker) => (
+          <div className={showGlassComposition ? 'glass-note-grid' : 'grid grid-cols-1 gap-3 min-[520px]:grid-cols-2'}>
+            {visibleStickers.map((sticker, index) => (
               <StickerListItem
                 key={sticker.id}
                 sticker={sticker}
                 isDark={isDark}
+                skin={skin}
+                variant={showGlassComposition ? (index === 0 ? 'featured' : 'compact') : 'standard'}
                 query={searchQuery}
+                showAiSummary={settings?.showAiSummary ?? true}
+                showAiTags={settings?.showAiTags ?? true}
                 onFocus={handleFocus}
                 onDelete={handleDelete}
                 onToggleVisible={handleToggleVisible}

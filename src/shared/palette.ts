@@ -102,3 +102,32 @@ export function resolveStickerColor(color: StickerColor): ColorTheme {
 export function normalizeStickerColor(color: StickerColor): StickerColor {
   return resolveStickerColor(color).color;
 }
+
+export interface GlassCardColor {
+  tint: string;
+  surface: string;
+  ink: string;
+  border: string;
+}
+
+const GLASS_TINTS: Record<string, string> = {
+  ice: '#7798B5',
+  lake: '#6C9FA5',
+  mint: '#81A99A',
+  rose: '#BC8FA0',
+  sage: '#A4AD87',
+  lilac: '#9A91B5',
+  frost: '#CFD5DA',
+  cloud: '#8A939B',
+};
+
+/** 便签色仅用于小面积标识，正文表面保持中性。 */
+export function resolveGlassCardColor(color: StickerColor, dark: boolean): GlassCardColor {
+  const tint = GLASS_TINTS[resolveStickerColor(color).key];
+  return {
+    tint,
+    surface: dark ? '#292D31' : '#F9FAFA',
+    ink: dark ? '#F2F4F3' : '#20282A',
+    border: dark ? '#FFFFFF1F' : '#20303414',
+  };
+}

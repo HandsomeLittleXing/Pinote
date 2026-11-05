@@ -1,34 +1,53 @@
 /* ==========================================
-   StickerNote - 冷色极简玻璃设计 token
-   所有颜色以 RGB 通道存储，便于 Tailwind 透明度修饰符使用
+   FrostNote - 三套皮肤 × 明暗设计 token
+   所有颜色以 RGB 通道存储，便于 Tailwind 透明度修饰符使用。
+   默认 :root/.dark 是「轻玻 Glass Card」；
+   html[data-skin='vellum'|'mote'] 覆盖另外两套。
    ========================================== */
 
 :root {
   /* 背景与表面 */
-  --bg: 244 247 250;
-  --bg-subtle: 237 242 247;
-  --surface: 255 255 255;
-  --surface-muted: 241 245 249;
+  --bg: 230 235 241;
+  --bg-subtle: 221 229 235;
+  --surface: 244 247 249;
+  --surface-card: 207 221 228;
+  --surface-muted: 213 225 231;
   --glass-hi: 255 255 255;
-  --glass-lo: 244 247 250;
+  --glass-lo: 218 228 234;
 
   /* 文字 */
-  --text: 15 23 42;
-  --text-muted: 100 116 139;
-  --text-subtle: 148 163 184;
+  --text: 31 43 53;
+  --text-muted: 65 83 96;
+  --text-subtle: 80 97 109;
 
   /* 线条与主色 */
-  --border: 15 23 42;
-  --accent: 47 111 237;
-  --accent-hover: 30 90 209;
-  --success: 4 120 87;
-  --warning: 180 83 9;
-  --danger: 220 38 38;
+  --border: 44 68 80;
+  --accent: 45 96 111;
+  --accent-hover: 36 79 94;
+  --success: 15 157 116;
+  --warning: 178 106 0;
+  --danger: 214 69 69;
+  --on-accent: 255 255 255;
+  --on-danger: 255 255 255;
 
-  /* 圆角 */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  /* 品牌 / 效果色 */
+  --brand-primary: 91 151 163;
+  --brand-secondary: 152 131 166;
+  --brand-tertiary: 128 174 184;
+  --selection: 151 195 203;
+  --caret: 45 96 111;
+
+  /* 语义标注 */
+  --ann-time: 14 143 126;
+  --ann-place: 77 95 232;
+  --ann-person: 194 40 104;
+  --ann-action: 110 143 0;
+  --ann-important: 169 97 0;
+
+  /* 第一套皮肤的矩形控件共用圆角 */
+  --radius-sm: 20px;
+  --radius-md: 20px;
+  --radius-lg: 20px;
   --radius-xl: 20px;
 
   /* 动效 */
@@ -38,33 +57,218 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* 阴影 */
-  --shadow-glass: 0 1px 2px rgb(15 23 42 / 0.06), 0 12px 32px rgb(15 23 42 / 0.08);
-  --shadow-float: 0 16px 48px rgb(15 23 42 / 0.14);
+  --shadow-glass: 0 1px 2px rgb(44 68 80 / 0.035), 0 8px 24px rgb(44 68 80 / 0.055);
+  --shadow-float: 0 2px 8px rgb(44 68 80 / 0.045), 0 18px 44px rgb(44 68 80 / 0.085);
+  --grain-opacity: 0.018;
 }
 
 .dark {
-  /* 背景与表面 */
-  --bg: 11 18 32;
-  --bg-subtle: 14 21 37;
-  --surface: 20 30 48;
-  --surface-muted: 26 38 58;
-  --glass-hi: 30 41 59;
-  --glass-lo: 15 23 42;
+  --bg: 29 36 44;
+  --bg-subtle: 34 43 52;
+  --surface: 41 53 64;
+  --surface-card: 46 62 74;
+  --surface-muted: 52 71 82;
+  --glass-hi: 57 72 85;
+  --glass-lo: 34 43 52;
 
-  /* 文字 */
-  --text: 230 237 247;
-  --text-muted: 143 162 184;
-  --text-subtle: 100 116 139;
+  --text: 242 245 247;
+  --text-muted: 185 199 205;
+  --text-subtle: 162 181 190;
 
-  /* 线条与主色 */
-  --border: 148 163 184;
-  --accent: 106 165 255;
-  --accent-hover: 133 183 255;
-  --success: 52 211 153;
-  --warning: 251 191 36;
-  --danger: 248 113 113;
+  --border: 242 244 243;
+  --accent: 155 200 208;
+  --accent-hover: 180 217 223;
+  --success: 95 227 180;
+  --warning: 255 209 102;
+  --danger: 255 143 159;
+  --on-accent: 21 37 36;
+  --on-danger: 42 13 13;
 
-  /* 阴影 */
-  --shadow-glass: 0 1px 2px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
-  --shadow-float: 0 20px 56px rgb(0 0 0 / 0.55);
+  --brand-primary: 155 200 208;
+  --brand-secondary: 182 163 195;
+  --brand-tertiary: 129 179 192;
+  --selection: 155 200 208;
+  --caret: 155 200 208;
+
+  --ann-time: 127 227 223;
+  --ann-place: 165 180 255;
+  --ann-person: 255 159 196;
+  --ann-action: 200 240 138;
+  --ann-important: 255 209 102;
+
+  --shadow-glass: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.14);
+  --shadow-float: 0 2px 8px rgb(0 0 0 / 0.10), 0 18px 44px rgb(0 0 0 / 0.20);
+  --grain-opacity: 0.014;
+}
+
+/* ---------- 硫酸纸 Vellum ---------- */
+:root[data-skin='vellum'] {
+  --bg: 248 243 245;
+  --bg-subtle: 241 232 236;
+  --surface: 255 252 253;
+  --surface-card: 251 246 248;
+  --surface-muted: 244 235 239;
+  --glass-hi: 255 255 255;
+  --glass-lo: 248 243 245;
+
+  --text: 28 21 25;
+  --text-muted: 110 90 99;
+  --text-subtle: 154 139 146;
+
+  --border: 28 21 25;
+  --accent: 194 40 104;
+  --accent-hover: 151 28 78;
+  --success: 14 143 126;
+  --warning: 160 90 31;
+  --danger: 185 58 75;
+  --on-accent: 255 255 255;
+  --on-danger: 255 255 255;
+
+  --brand-primary: 214 47 116;
+  --brand-secondary: 143 216 197;
+  --brand-tertiary: 242 179 203;
+  --selection: 242 179 203;
+  --caret: 194 40 104;
+
+  --ann-time: 14 143 126;
+  --ann-place: 77 95 232;
+  --ann-person: 194 40 104;
+  --ann-action: 110 143 0;
+  --ann-important: 169 97 0;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+
+  --shadow-glass: 0 1px 2px rgb(58 23 38 / 0.07), 0 16px 36px rgb(58 23 38 / 0.10);
+  --shadow-float: 0 18px 52px rgb(58 23 38 / 0.16);
+  --grain-opacity: 0.055;
+}
+
+:root.dark[data-skin='vellum'] {
+  --bg: 11 9 14;
+  --bg-subtle: 18 14 21;
+  --surface: 25 18 28;
+  --surface-card: 26 19 26;
+  --surface-muted: 34 24 36;
+  --glass-hi: 42 28 42;
+  --glass-lo: 11 9 14;
+
+  --text: 245 237 242;
+  --text-muted: 192 174 184;
+  --text-subtle: 143 124 135;
+
+  --border: 245 237 242;
+  --accent: 230 60 136;
+  --accent-hover: 242 122 175;
+  --success: 159 224 196;
+  --warning: 240 181 106;
+  --danger: 255 138 158;
+  --on-accent: 24 10 16;
+  --on-danger: 42 13 13;
+
+  --brand-primary: 230 60 136;
+  --brand-secondary: 159 224 196;
+  --brand-tertiary: 240 166 197;
+  --selection: 230 60 136;
+  --caret: 230 60 136;
+
+  --ann-time: 127 232 207;
+  --ann-place: 165 180 255;
+  --ann-person: 255 168 221;
+  --ann-action: 200 232 122;
+  --ann-important: 255 209 102;
+
+  --shadow-glass: 0 1px 2px rgb(0 0 0 / 0.45), 0 18px 44px rgb(0 0 0 / 0.55);
+  --shadow-float: 0 22px 60px rgb(0 0 0 / 0.65);
+  --grain-opacity: 0.07;
+}
+
+/* ---------- 小墨 Mote ---------- */
+:root[data-skin='mote'] {
+  --bg: 247 242 251;
+  --bg-subtle: 238 232 248;
+  --surface: 255 255 255;
+  --surface-card: 251 248 255;
+  --surface-muted: 241 235 250;
+  --glass-hi: 255 255 255;
+  --glass-lo: 247 242 251;
+
+  --text: 36 36 58;
+  --text-muted: 107 106 133;
+  --text-subtle: 150 148 174;
+
+  --border: 36 36 58;
+  --accent: 79 107 234;
+  --accent-hover: 50 69 184;
+  --success: 15 157 116;
+  --warning: 176 106 0;
+  --danger: 194 66 90;
+  --on-accent: 255 255 255;
+  --on-danger: 255 255 255;
+
+  --brand-primary: 91 124 255;
+  --brand-secondary: 95 216 245;
+  --brand-tertiary: 242 166 231;
+  --selection: 242 166 231;
+  --caret: 79 107 234;
+
+  --ann-time: 11 147 168;
+  --ann-place: 79 107 234;
+  --ann-person: 201 79 152;
+  --ann-action: 110 143 0;
+  --ann-important: 169 97 0;
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+
+  --shadow-glass: 0 1px 2px rgb(36 36 58 / 0.06), 0 14px 36px rgb(36 36 58 / 0.09);
+  --shadow-float: 0 18px 50px rgb(36 36 58 / 0.16);
+  --grain-opacity: 0.015;
+}
+
+:root.dark[data-skin='mote'] {
+  --bg: 20 19 38;
+  --bg-subtle: 25 24 51;
+  --surface: 30 29 54;
+  --surface-card: 32 31 56;
+  --surface-muted: 39 38 66;
+  --glass-hi: 48 47 78;
+  --glass-lo: 20 19 38;
+
+  --text: 246 240 255;
+  --text-muted: 185 180 214;
+  --text-subtle: 139 135 168;
+
+  --border: 246 240 255;
+  --accent: 124 151 255;
+  --accent-hover: 178 194 255;
+  --success: 125 224 192;
+  --warning: 255 209 102;
+  --danger: 255 143 159;
+  --on-accent: 23 20 45;
+  --on-danger: 42 13 13;
+
+  --brand-primary: 91 124 255;
+  --brand-secondary: 124 227 250;
+  --brand-tertiary: 247 184 239;
+  --selection: 147 170 255;
+  --caret: 124 151 255;
+
+  --ann-time: 127 229 255;
+  --ann-place: 165 180 255;
+  --ann-person: 255 168 221;
+  --ann-action: 200 232 122;
+  --ann-important: 255 209 102;
+
+  --shadow-glass: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 46px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 22px 60px rgb(0 0 0 / 0.6);
+  --grain-opacity: 0.025;
+}
+
+::selection {
+  background: rgb(var(--selection) / 0.42);
 }

@@ -13,8 +13,9 @@ import * as SystemUI from 'expo-system-ui';
 import PairingScreen from './src/screens/PairingScreen';
 import StickerListScreen from './src/screens/StickerListScreen';
 import StickerEditorScreen from './src/screens/StickerEditorScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import { isPaired } from './src/api/syncClient';
-import { useAppTheme } from './src/theme';
+import { ThemeProvider, useAppTheme } from './src/theme';
 import { ScreenBackground } from './src/components/ScreenBackground';
 import { ToastProvider } from './src/components/GlassToast';
 
@@ -22,11 +23,20 @@ export type RootStackParamList = {
   Pairing: undefined;
   List: undefined;
   Editor: { stickerId: string };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <ThemedApp />
+    </ThemeProvider>
+  );
+}
+
+function ThemedApp() {
   const theme = useAppTheme();
   const [paired, setPaired] = useState<boolean | null>(null);
 
@@ -90,7 +100,7 @@ export default function App() {
                   {(props) => (
                     <StickerListScreen
                       onOpenSticker={(id) => props.navigation.navigate('Editor', { stickerId: id })}
-                      onUnpaired={() => setPaired(false)}
+                      onOpenSettings={() => props.navigation.navigate('Settings')}
                     />
                   )}
                 </Stack.Screen>
@@ -99,6 +109,15 @@ export default function App() {
                     <StickerEditorScreen
                       stickerId={props.route.params.stickerId}
                       onBack={() => props.navigation.goBack()}
+                      onOpenSettings={() => props.navigation.navigate('Settings')}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Settings">
+                  {(props) => (
+                    <SettingsScreen
+                      onBack={() => props.navigation.goBack()}
+                      onUnpaired={() => setPaired(false)}
                     />
                   )}
                 </Stack.Screen>

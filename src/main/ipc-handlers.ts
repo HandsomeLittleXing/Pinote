@@ -1,7 +1,14 @@
 import { ipcMain, BrowserWindow, Menu, nativeTheme, app } from 'electron';
 import { execSync } from 'child_process';
 import { IPC } from '../shared/ipc-channels';
-import type { AppSettings, StickerColor, ImportMode, ExportData } from '../shared/types';
+import type {
+  AIAnnotateRequest,
+  AIRewriteRequest,
+  AppSettings,
+  StickerColor,
+  ImportMode,
+  ExportData,
+} from '../shared/types';
 import { STICKER_PALETTE, resolveStickerColor } from '../shared/palette';
 import type { StickerStore } from './store';
 import type { StickerWindowManager } from './windows';
@@ -277,7 +284,13 @@ export class IpcHandlerRegistry {
         const theme = this.windowManager.getEffectiveTheme();
         this.broadcast(IPC.THEME_CHANGED, theme);
         this.windowManager.updatePanelWindowChrome(theme);
+      } else if (oldSettings.skin !== newSettings.skin) {
+        // 皮肤变化不影响明暗，但原生标题栏底色要跟着换
+        this.windowManager.updatePanelWindowChrome(this.windowManager.getEffectiveTheme());
       }
+
+      // 通知所有窗口完整设置已变化（皮肤、AI 开关等）
+      this.broadcast(IPC.SETTINGS_CHANGED, newSettings);
 
       // 开机自启动（写注册表，用安装目录路径）
       if (oldSettings.autoStart !== newSettings.autoStart) {
@@ -364,6 +377,31 @@ export class IpcHandlerRegistry {
       const status = await this.syncManager.syncNow();
       this.broadcast(IPC.STICKER_LIST_CHANGED);
       return status;
+    });
+
+    ipcMain.handle(IPC.AI_GET_STATUS, async () => {
+      return this.syncManager.getAiStatus();
+    });
+
+    ipcMain.handle(IPC.AI_SAVE_KEY, async (_event: any, apiKey: string) => {
+      if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey.length > 512) throw new Error('请输入有效的 API Key');
+      return this.syncManager.saveAiKey(apiKey);
+    });
+    ipcMain.handle(IPC.AI_TEST_KEY, async () => this.syncManager.testAiKey());
+    ipcMain.handle(IPC.AI_DELETE_KEY, async () => this.syncManager.deleteAiKey());
+    ipcMain.handle(IPC.AI_REWRITE, async (_event: any, request: AIRewriteRequest) => {
+      if (!this.store.getSettings().aiEnabled) throw new Error('请先开启 AI 整理');
+      if (!request || typeof request.plainText !== 'string' || request.plainText.length > 8000 ||
+          typeof request.contentHash !== 'string') throw new Error('便签内容无效或过长');
+      return this.syncManager.rewrite(request);
+    });
+
+    ipcMain.handle(IPC.AI_ANNOTATE, async (_event: any, request: AIAnnotateRequest) => {
+      const settings = this.store.getSettings();
+      if (!settings.aiEnabled) {
+        throw new Error('请在设置 → 同步 → AI 整理中开启该功能');
+      }
+      return this.syncManager.annotate(request);
     });
   }
 }

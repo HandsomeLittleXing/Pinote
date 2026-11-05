@@ -1,6 +1,6 @@
 {
   "name": "sticker-note",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "电脑便签 - 开机即在，随手一贴",
   "main": "./out/main/index.js",
   "author": "电脑便签",

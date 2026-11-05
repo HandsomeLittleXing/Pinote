@@ -248,6 +248,20 @@ npx expo start     # 用 Expo Go 扫码运行
 
 ---
 
+## 9.5 AI 整理（v1.2）
+
+- `Sticker.ai` 是独立 JSON 字段：`contentHash / summary / tags / spans / todos / suggestedReminder`。
+  正文 HTML 不被改写；桌面端用 Tiptap Decoration，手机端用只读注解预览。
+- 服务端新增 `POST /ai/annotate` 与 `GET /ai/status`，Bearer 鉴权、按同步空间与 IP 限流、25s 超时、
+  输出严格校验。空间 Key 由已配对设备配置，按 `sync_space_id` AES-256-GCM 加密保存在独立的 `ai_credentials` 表；`LLM_API_KEY` 是后备，客户端不持久化明文。
+  新的 `/ai/rewrite` 只返回纯文本整理块和最多 3 条独立补充，客户端预览并选择后才把受限 HTML 写入 `stickers.content`，同时清空旧 `ai` 标注；提案不进入同步载荷。
+- `stickers` 表增加 `ai JSON NULL`；同步请求中缺省 `ai` 的旧客户端会保留库中已有 AI 结果，
+  显式传 `null` 才清空。
+- 同步采用整条 LWW：AI 写入会更新 `updatedAt`。客户端在写 AI 前先拉取最新数据并校验
+  `contentHash`，降低覆盖另一台设备正文的概率；冲突时以较新的正文为准，AI 可重新生成。
+
+---
+
 ## 10. 待办 / 后续
 
 - [ ] ECS 上实际部署后端（放行端口、上传、systemd、验证公网 /health）

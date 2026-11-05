@@ -19,6 +19,7 @@ interface GlassSurfaceProps {
   blur?: boolean;
   radius?: number;
   intensity?: number;
+  tint?: string;
 }
 
 /** 玻璃/半透明表面：BlurView + 高光渐变 + 发丝边 + 阴影 */
@@ -29,24 +30,32 @@ export function GlassSurface({
   blur = true,
   radius = 20,
   intensity,
+  tint,
 }: GlassSurfaceProps) {
   const theme = useAppTheme();
   const targetRef = useContext(BlurTargetContext);
+  const useBlur =
+    blur && !(theme.skin === 'glass' && Platform.OS === 'android' && Number(Platform.Version) < 31);
+  const isLightGlass = theme.skin === 'glass';
 
   return (
     <View
       style={[
         styles.base,
         {
-          borderRadius: radius,
+          borderRadius: isLightGlass && radius !== 0 && radius !== 999 ? theme.radius.md : radius,
           borderColor: theme.colors.border,
-          backgroundColor: blur ? 'transparent' : theme.colors.surfaceCard,
-          shadowColor: theme.dark ? '#000000' : '#0F172A',
+          backgroundColor: useBlur ? 'transparent' : theme.colors.surfaceCard,
+          shadowColor: theme.colors.shadow,
+          shadowOpacity: isLightGlass ? (theme.dark ? 0.1 : 0.04) : 0.1,
+          shadowRadius: isLightGlass ? 12 : 18,
+          shadowOffset: { width: 0, height: isLightGlass ? 4 : 8 },
+          elevation: isLightGlass ? 1 : 4,
         },
         style,
       ]}
     >
-      {blur ? (
+      {useBlur ? (
         <BlurView
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
@@ -57,16 +66,28 @@ export function GlassSurface({
         />
       ) : null}
 
+      {isLightGlass && tint ? (
+        <LinearGradient
+          pointerEvents="none"
+          colors={[`${tint}${theme.dark ? '38' : '55'}`, `${tint}00`]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+
       <LinearGradient
         pointerEvents="none"
         colors={
-          theme.dark
-            ? blur
-              ? ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.02)']
-              : ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']
-            : blur
-              ? ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.18)']
-              : ['rgba(255,255,255,0.28)', 'rgba(255,255,255,0.05)']
+          useBlur
+            ? [theme.colors.glassTop, theme.colors.glassBottom]
+            : isLightGlass
+              ? theme.dark
+                ? ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.00)']
+                : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.00)']
+            : theme.dark
+              ? ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']
+              : ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.03)']
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
@@ -82,9 +103,5 @@ const styles = StyleSheet.create({
   base: {
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
   },
 });

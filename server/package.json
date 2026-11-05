@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json && node -e \"require('fs').copyFileSync('src/db/schema.sql','dist/db/schema.sql')\"",
     "start": "node dist/index.js",
-    "db:init": "tsx src/db/init.ts"
+    "db:init": "tsx src/db/init.ts",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "test": "tsx --test test/aiCredentials.test.ts test/aiRewrite.test.ts test/aiRoutes.test.ts test/aiKeyTransport.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

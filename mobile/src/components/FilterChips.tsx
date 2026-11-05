@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useAppTheme } from '../theme';
 
 export interface FilterOption {
@@ -16,15 +16,25 @@ interface FilterChipsProps {
 /** 横向筛选 chips */
 export function FilterChips({ options, value, onChange }: FilterChipsProps) {
   const theme = useAppTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const tags = options.filter((item) => item.key.startsWith('tag:'));
+  const shown = tags.slice(0, 4);
+  const activeTag = tags.find((item) => item.key === value);
+  if (activeTag && !shown.some((item) => item.key === value)) shown.push(activeTag);
+  const visibleOptions = options.filter((item) => !item.key.startsWith('tag:'));
+  visibleOptions.splice(1, 0, ...shown);
+  const hidden = tags.filter((item) => !shown.some((shownItem) => shownItem.key === item.key));
 
   return (
+    <>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       style={{ flexGrow: 0 }}
       contentContainerStyle={{ gap: theme.spacing.sm, paddingVertical: 2 }}
     >
-      {options.map((option) => {
+      {visibleOptions.map((option) => {
         const active = option.key === value;
         return (
           <Pressable
@@ -45,11 +55,7 @@ export function FilterChips({ options, value, onChange }: FilterChipsProps) {
               style={{
                 fontSize: 12,
                 fontWeight: active ? '600' : '400',
-                color: active
-                  ? theme.dark
-                    ? '#0B1220'
-                    : '#FFFFFF'
-                  : theme.colors.textMuted,
+                color: active ? theme.colors.onAccent : theme.colors.textMuted,
               }}
             >
               {option.label}
@@ -57,7 +63,28 @@ export function FilterChips({ options, value, onChange }: FilterChipsProps) {
           </Pressable>
         );
       })}
+      {hidden.length > 0 && <Pressable onPress={() => setMenuOpen(true)} style={[styles.chip,
+        { borderColor: theme.colors.border, backgroundColor: theme.colors.surfaceGlass }]}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>更多标签</Text>
+      </Pressable>}
     </ScrollView>
+    <Modal visible={menuOpen} animationType="slide" onRequestClose={() => setMenuOpen(false)}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.backgroundStart, padding: theme.spacing.lg }}>
+        <Pressable onPress={() => setMenuOpen(false)} style={{ alignSelf: 'flex-end', padding: 8 }}>
+          <Text style={{ color: theme.colors.accent }}>关闭</Text>
+        </Pressable>
+        <TextInput value={query} onChangeText={setQuery} placeholder="搜索标签"
+          placeholderTextColor={theme.colors.textSubtle}
+          style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
+            color: theme.colors.text, padding: 10, marginBottom: 12 }} />
+        <ScrollView>{hidden.filter((item) => item.label.toLowerCase().includes(query.trim().toLowerCase()))
+          .map((item) => <Pressable key={item.key} onPress={() => { onChange(item.key); setMenuOpen(false); }}
+            style={{ padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border }}>
+            <Text style={{ color: theme.colors.text }}>{item.label}</Text>
+          </Pressable>)}</ScrollView>
+      </View>
+    </Modal>
+    </>
   );
 }
 

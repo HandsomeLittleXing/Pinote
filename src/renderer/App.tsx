@@ -22,7 +22,9 @@ function getStickerId(): string | null {
 const App: React.FC = () => {
   const [pageType] = useState(getPageType);
   const [stickerId] = useState(getStickerId);
-  const { isDark } = useTheme();
+  // 只负责把 .dark / data-skin 写到 <html>；不要再在包裹 div 上重复 .dark，
+  // 否则它会用默认皮肤的 token 覆盖其他皮肤（自定义属性按最近祖先继承）。
+  useTheme();
 
   useEffect(() => {
     if (pageType === 'list') {
@@ -33,7 +35,7 @@ const App: React.FC = () => {
   }, [pageType]);
 
   return (
-    <div className={isDark ? 'dark' : ''}>
+    <div>
       {pageType === 'sticker' && stickerId && (
         <StickerEditor stickerId={stickerId} />
       )}

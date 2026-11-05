@@ -31,6 +31,7 @@ export const IPC = {
   // 设置
   SETTINGS_GET: 'settings:get',
   SETTINGS_SET: 'settings:set',
+  SETTINGS_CHANGED: 'settings:changed',
   SHORTCUTS_SET_RECORDING: 'shortcuts:set-recording',
 
   // 全局操作
@@ -54,4 +55,12 @@ export const IPC = {
   SYNC_UNLINK_DEVICE: 'sync:unlink-device',
   SYNC_NOW: 'sync:now',
   SYNC_STATUS_CHANGED: 'sync:status-changed',
+
+  // AI 整理（Key 只在服务器）
+  AI_GET_STATUS: 'ai:get-status',
+  AI_SAVE_KEY: 'ai:save-key',
+  AI_TEST_KEY: 'ai:test-key',
+  AI_DELETE_KEY: 'ai:delete-key',
+  AI_ANNOTATE: 'ai:annotate',
+  AI_REWRITE: 'ai:rewrite',
 } as const;

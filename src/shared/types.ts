@@ -1,3 +1,48 @@
+/** 主题皮肤标识 */
+export type SkinId = 'glass' | 'vellum' | 'mote';
+
+/** 明暗模式 */
+export type ThemeMode = 'system' | 'light' | 'dark';
+
+/** 语义标注类别 */
+export type AnnotationKind = 'time' | 'place' | 'person' | 'action' | 'important';
+
+/** 一条 AI 语义标注：text 必须来自便签纯文本的精确子串 */
+export interface AnnotationSpan {
+  kind: AnnotationKind;
+  text: string;
+  /** 1 = 轻强调，3 = 强强调 */
+  importance: 1 | 2 | 3;
+  /** 可选的 UTF-16 偏移提示；客户端仍应按 text 精确匹配 */
+  start?: number;
+}
+
+/** AI 建议的提醒 */
+export interface SuggestedReminder {
+  /** 原文中的时间/事项短语 */
+  text: string;
+  /** 带时区的 ISO 8601；没有明确时间时为 null */
+  dueAt: string | null;
+  /** 0–1 置信度 */
+  confidence: number;
+}
+
+/**
+ * AI 整理结果。它与正文分开存储，正文 HTML 永远不会被写入标注标记。
+ * contentHash 是归一化纯文本的哈希，用于判断结果是否过期。
+ */
+export interface AIAnnotation {
+  version: 1;
+  contentHash: string;
+  summary: string;
+  tags: string[];
+  spans: AnnotationSpan[];
+  todos: string[];
+  suggestedReminder: SuggestedReminder | null;
+  generatedAt: string;
+  model: string;
+}
+
 /** 便签数据模型 */
 export interface Sticker {
   id: string;
@@ -14,6 +59,8 @@ export interface Sticker {
   /** 软删除标记，ISO 8601；非 null 表示已删除（用于跨设备同步 tombstone） */
   deletedAt: string | null;
   windowState: WindowState;
+  /** AI 整理结果（摘要/标签/语义标注/提醒建议），没整理过为 null */
+  ai: AIAnnotation | null;
 }
 
 /** 窗口位置与尺寸 */
@@ -49,10 +96,20 @@ export interface AppSettings {
   shortcutNew: string;
   shortcutList: string;
   defaultColor: StickerColor;
-  themeMode: 'system' | 'light' | 'dark';
+  themeMode: ThemeMode;
+  /** 主题皮肤 */
+  skin: SkinId;
   autoStart: boolean;
   /** 是否启用手机同步；默认 false，旧数据缺省时按是否已有 token 推断 */
   syncEnabled: boolean;
+  /** 是否启用 AI 整理（Key 在服务器，客户端只控制是否允许发送文本） */
+  aiEnabled: boolean;
+  /** 已同意的 AI 隐私说明版本；0 表示尚未同意 */
+  aiConsentVersion: number;
+  /** 在列表卡片显示 AI 摘要 */
+  showAiSummary: boolean;
+  /** 在列表卡片显示 AI 标签 */
+  showAiTags: boolean;
 }
 
 /** 默认设置 */
@@ -61,8 +118,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shortcutList: 'Ctrl+Alt+S',
   defaultColor: '#DFECFB',
   themeMode: 'system',
+  skin: 'glass',
   autoStart: false,
   syncEnabled: false,
+  aiEnabled: false,
+  aiConsentVersion: 0,
+  showAiSummary: true,
+  showAiTags: true,
 };
 
 /** 颜色主题配置 */
@@ -122,6 +184,62 @@ export interface PairingCodeResult {
   code: string;
   expiresAt: string;
   ttlSeconds: number;
+}
+
+/** AI 服务状态 */
+export interface AIStatus {
+  configured: boolean;
+  model: string;
+  source?: 'space' | 'server' | 'none';
+  keyHint?: string;
+}
+
+export interface AIRewriteBlock {
+  type: 'heading' | 'paragraph' | 'bullet';
+  text: string;
+}
+
+export interface AIRewriteSupplement {
+  id: string;
+  kind: 'suggestion' | 'example' | 'question';
+  text: string;
+}
+
+export interface AIRewriteRequest {
+  plainText: string;
+  contentHash: string;
+}
+
+export interface AIRewriteResponse {
+  sourceHash: string;
+  organizedBlocks: AIRewriteBlock[];
+  supplements: AIRewriteSupplement[];
+}
+
+/** AI 整理请求 */
+export interface AIAnnotateRequest {
+  /** 归一化后的便签纯文本（不是 HTML） */
+  plainText: string;
+  contentHash: string;
+  timezone?: string;
+  /** true 时绕过服务端缓存 */
+  force?: boolean;
+}
+
+/** AI 整理响应 */
+export interface AIAnnotateResponse {
+  annotation: AIAnnotation;
+  cached: boolean;
+}
+
+/** 预加载脚本暴露的 AIAPI */
+export interface AIAPI {
+  getStatus(): Promise<AIStatus>;
+  saveKey(apiKey: string): Promise<AIStatus>;
+  testKey(): Promise<void>;
+  deleteKey(): Promise<AIStatus>;
+  annotate(request: AIAnnotateRequest): Promise<AIAnnotateResponse>;
+  rewrite(request: AIRewriteRequest): Promise<AIRewriteResponse>;
 }
 
 /** 预加载脚本暴露的 SyncAPI */
@@ -187,6 +305,8 @@ export interface WindowAPI {
 export interface SettingsAPI {
   get(): Promise<AppSettings>;
   set(settings: Partial<AppSettings>): Promise<void>;
+  /** 订阅设置变更（皮肤、AI 开关等），返回取消订阅函数 */
+  onChanged(callback: (settings: AppSettings) => void): () => void;
 }
 
 /** 预加载脚本暴露的 ThemeAPI */
@@ -209,6 +329,7 @@ export interface PreloadAPI {
   theme: ThemeAPI;
   data: DataAPI;
   sync: SyncAPI;
+  ai: AIAPI;
   shortcuts: ShortcutAPI;
   app: AppAPI;
 }

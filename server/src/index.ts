@@ -1,11 +1,11 @@
+// 必须最先加载 .env，路由模块在导入时会读取 AI 限流等配置
+import './env';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { devicesRouter } from './routes/devices';
 import { pairingRouter } from './routes/pairing';
 import { syncRouter } from './routes/sync';
-
-dotenv.config();
+import { aiRouter } from './routes/ai';
 
 // 兜底日志：避免单个请求的异常直接导致整个服务退出
 process.on('unhandledRejection', (reason) => {
@@ -31,6 +31,7 @@ app.get('/health', (_req, res) => {
 app.use('/devices', devicesRouter);
 app.use('/pairing', pairingRouter);
 app.use('/sync', syncRouter);
+app.use('/ai', aiRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
