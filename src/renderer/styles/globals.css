@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Liansheng Lingguangti';
+  src: url('../../../resources/fonts/LianshengLingguangti-2.2.11-Variable.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400 650;
+  font-display: swap;
+}
+
+:root {
+  --app-font: 'Liansheng Lingguangti', 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI',
+    system-ui, sans-serif;
+}
+
+:root[data-skin='vellum'],
+:root[data-skin='mote'] {
+  --app-font: 'Segoe UI Variable Text', 'Segoe UI', 'Microsoft YaHei UI', system-ui, sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -14,8 +32,7 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', Inter, system-ui, -apple-system,
-    BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  font-family: var(--app-font);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: rgb(var(--text));
@@ -116,7 +133,56 @@ textarea:focus {
 }
 
 .skin-backdrop[data-backdrop-skin='glass'] {
-  background: transparent;
+  background-image: radial-gradient(rgb(var(--border) / 0.035) 0.6px, transparent 0.9px);
+  background-size: 23px 25px;
+}
+
+.sticker-doodle-field {
+  position: absolute;
+  inset: 0;
+  color: rgb(var(--text));
+}
+
+.sticker-doodle {
+  position: absolute;
+  opacity: 0.23;
+  filter: none;
+}
+
+.sticker-doodle--cup { width: 145px; right: -19px; top: 70px; transform: rotate(-9deg); }
+.sticker-doodle--buddy { width: 126px; left: -26px; bottom: 64px; transform: rotate(8deg); }
+.sticker-doodle--flower { width: 98px; right: -16px; bottom: 22px; transform: rotate(-6deg); }
+.sticker-doodle--star { width: 68px; left: 12px; top: 39%; transform: rotate(12deg); }
+.sticker-doodle--leaf { width: 84px; right: 14%; top: 29%; transform: rotate(17deg); }
+.sticker-doodle--cat { width: 86px; left: 20%; bottom: -25px; transform: rotate(-8deg); }
+
+.sticker-card-doodle {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  z-index: 0;
+  width: 108px;
+  height: 108px;
+  opacity: 0.16;
+  pointer-events: none;
+  transform: rotate(-10deg);
+}
+
+.glass-note-card--featured .sticker-card-doodle {
+  right: 8px;
+  bottom: -8px;
+  width: 158px;
+  height: 158px;
+  opacity: 0.15;
+}
+
+.glass-note-card > :not(.sticker-card-doodle) {
+  position: relative;
+  z-index: 1;
+}
+
+:root.dark .sticker-doodle {
+  opacity: 0.24;
 }
 
 .skin-blob {
@@ -290,7 +356,9 @@ textarea:focus {
 .glass-note-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 20px 15px;
+  align-items: start;
+  padding: 7px 7px 18px;
 }
 
 .glass-filter-strip {
@@ -322,40 +390,30 @@ textarea:focus {
 }
 
 .glass-note-card {
+  overflow: hidden;
   border-radius: var(--radius-lg);
-  border-width: 1px;
-  border-color: rgb(var(--border) / 0.18);
-  background-color: rgb(var(--surface-card) / 0.92);
-  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
-  background-size: 21px 23px;
+  border-width: 1.5px;
+  border-color: rgb(var(--border) / 0.32);
+  background-color: var(--note-surface, rgb(var(--surface-card)));
+  background-image: radial-gradient(rgb(var(--text) / 0.025) 0.55px, transparent 0.8px);
+  background-size: 19px 21px;
   box-shadow: var(--shadow-glass);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
 }
 
 .glass-note-card:hover {
-  transform: none;
+  transform: translateY(-2px) rotate(-0.3deg);
+  box-shadow: var(--shadow-float);
 }
 
 .glass-note-card--featured {
-  --text: 244 247 249;
-  --text-muted: 207 218 224;
-  --text-subtle: 178 196 206;
-  --accent: 167 218 225;
-  --border: 240 246 250;
-  --warning: 255 214 149;
-  color: rgb(var(--text));
+  transform: rotate(-0.25deg);
   min-height: 224px;
   padding: 20px;
   gap: 16px;
-  border-color: rgb(255 255 255 / 0.24);
-  background-color: #263744;
-  background-image:
-    radial-gradient(rgb(255 255 255 / 0.025) 0.5px, transparent 0.7px),
-    linear-gradient(135deg, rgb(112 181 194 / 0.14), transparent 44%, rgb(173 143 186 / 0.12)),
-    linear-gradient(155deg, #354858, #22313E);
-  background-size: 21px 23px, auto, auto;
-  box-shadow: 0 2px 6px rgb(27 43 54 / 0.08), 0 16px 34px rgb(27 43 54 / 0.16), inset 0 1px 0 rgb(255 255 255 / 0.18);
+  border-color: rgb(var(--border) / 0.38);
+  background-color: color-mix(in srgb, var(--note-surface, #FFFDF6) 72%, #F7E4B5);
+  background-image: radial-gradient(rgb(var(--text) / 0.025) 0.55px, transparent 0.8px);
+  box-shadow: 0 3px 4px rgb(var(--border) / 0.09), 0 16px 28px rgb(var(--border) / 0.1);
 }
 
 .glass-note-card--featured > :last-child,
@@ -365,7 +423,7 @@ textarea:focus {
 
 .glass-note-card--featured .anno {
   color: inherit;
-  background: rgb(255 255 255 / 0.12);
+  background: rgb(var(--accent) / 0.12);
   text-decoration-color: currentColor;
 }
 
@@ -377,8 +435,8 @@ textarea:focus {
   gap: 10px;
   min-height: 70px;
   padding: 12px 0;
-  border-top: 1px solid rgb(255 255 255 / 0.1);
-  border-bottom: 1px solid rgb(255 255 255 / 0.1);
+  border-top: 1px solid rgb(var(--border) / 0.18);
+  border-bottom: 1px solid rgb(var(--border) / 0.18);
 }
 
 .glass-feature-body > p:first-child {
@@ -386,38 +444,53 @@ textarea:focus {
 }
 
 .glass-note-card--featured .glass-feature-action {
-  border: 1px solid rgb(255 255 255 / 0.26);
+  border: 1px solid rgb(var(--border) / 0.28);
   color: rgb(var(--text));
 }
 
 .glass-note-card--featured .glass-feature-action:hover {
-  background: rgb(255 255 255 / 0.12);
+  background: rgb(var(--accent) / 0.1);
 }
 
 .glass-note-card--compact {
   min-height: 166px;
   padding: 14px;
   background-image:
-    linear-gradient(145deg, color-mix(in srgb, var(--note-tint) 42%, transparent), transparent 68%),
-    radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
-  background-size: auto, 21px 23px;
+    linear-gradient(145deg, color-mix(in srgb, var(--note-tint) 12%, transparent), transparent 68%),
+    radial-gradient(rgb(var(--text) / 0.025) 0.55px, transparent 0.8px);
+  background-size: auto, 19px 21px;
 }
 
+/* ID 驱动的有限错位，让卡片像随手贴上去，同时保留独立点击间距。 */
+.glass-note-grid .glass-note-card--compact[data-scatter='0'] { min-height: 172px; transform: translate(-2px, 0) rotate(-1.6deg); }
+.glass-note-grid .glass-note-card--compact[data-scatter='1'] { min-height: 188px; transform: translate(3px, 8px) rotate(1.7deg); }
+.glass-note-grid .glass-note-card--compact[data-scatter='2'] { min-height: 178px; transform: translate(2px, 3px) rotate(0.9deg); }
+.glass-note-grid .glass-note-card--compact[data-scatter='3'] { min-height: 194px; transform: translate(-3px, 10px) rotate(-2deg); }
+.glass-note-grid .glass-note-card--compact[data-scatter='4'] { min-height: 184px; transform: translate(-2px, 6px) rotate(-1.1deg); }
+.glass-note-grid .glass-note-card--compact[data-scatter='5'] { min-height: 174px; transform: translate(3px, 1px) rotate(1.4deg); }
+.glass-note-grid .glass-note-card--featured[data-scatter='0'],
+.glass-note-grid .glass-note-card--featured[data-scatter='3'] { transform: rotate(-1.1deg); }
+.glass-note-grid .glass-note-card--featured[data-scatter='1'],
+.glass-note-grid .glass-note-card--featured[data-scatter='4'] { transform: rotate(1deg); }
+.glass-note-grid .glass-note-card--featured[data-scatter='2'],
+.glass-note-grid .glass-note-card--featured[data-scatter='5'] { transform: rotate(-0.6deg); }
+.glass-note-grid .glass-note-card--compact:hover,
+.glass-note-grid .glass-note-card--featured:hover { transform: translateY(-2px) rotate(0deg); }
+.glass-note-card[data-scatter='1'] .sticker-card-doodle,
+.glass-note-card[data-scatter='4'] .sticker-card-doodle { transform: rotate(8deg); }
+.glass-note-card[data-scatter='2'] .sticker-card-doodle,
+.glass-note-card[data-scatter='5'] .sticker-card-doodle { transform: rotate(11deg); }
+
 :root.dark[data-skin='glass'] .glass-note-card--featured {
-  background-image:
-    radial-gradient(rgb(255 255 255 / 0.025) 0.5px, transparent 0.7px),
-    linear-gradient(135deg, rgb(112 181 194 / 0.16), transparent 44%, rgb(173 143 186 / 0.13)),
-    linear-gradient(155deg, #435767, #2D4050);
+  background-color: color-mix(in srgb, var(--note-surface, #343B32) 86%, #726541);
 }
 
 :root[data-skin='glass'] .glass-panel {
-  background: rgb(var(--surface) / 0.82);
-  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
-  background-size: 21px 23px;
-  border-color: rgb(var(--border) / 0.09);
+  background: rgb(var(--surface));
+  border-color: rgb(var(--border) / 0.2);
   box-shadow: var(--shadow-float);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 :root[data-skin='glass'] :is(button:not(.color-dot):not(.rounded-full), input, select, textarea, [role='dialog']) {
@@ -425,12 +498,10 @@ textarea:focus {
 }
 
 :root[data-skin='glass'] [role='dialog'] {
-  background: rgb(var(--surface) / 0.9);
-  background-image: radial-gradient(rgb(var(--text) / var(--grain-opacity)) 0.5px, transparent 0.7px);
-  background-size: 21px 23px;
-  border-color: rgb(var(--border) / 0.1);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  background: rgb(var(--surface));
+  border-color: rgb(var(--border) / 0.22);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 :root[data-skin='glass'] .saas-section-surface {
@@ -443,8 +514,8 @@ textarea:focus {
 }
 
 :root[data-skin='glass'] .appearance-choice {
-  border-width: 1px;
-  box-shadow: none;
+  border-width: 1.5px;
+  box-shadow: 0 2px 5px rgb(var(--border) / 0.06);
 }
 
 :root[data-skin='vellum'] .sticker-list-card::before,

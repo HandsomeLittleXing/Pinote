@@ -1,5 +1,12 @@
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Text } from './AppText';
 import { Eye, Sparkles, X } from 'lucide-react-native';
 import { ANNOTATION_META, ANNOTATION_KINDS } from '@shared/ai';
 import type { AIAnnotation } from '@shared/types';

@@ -6,23 +6,25 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { Text } from './AppText';
 import { Check, Clock3, Sparkles, X } from 'lucide-react-native';
 import { ANNOTATION_META, ANNOTATION_KINDS } from '@shared/ai';
-import type { AIAnnotation } from '@shared/types';
+import type { AIAnnotation, StickerTask } from '@shared/types';
 import { useAppTheme } from '../theme';
 
 interface AiResultSheetProps {
   visible: boolean;
   annotation: AIAnnotation | null;
   currentTags: string[];
+  currentTasks: StickerTask[];
   hasReminder: boolean;
   rerunning?: boolean;
   onClose: () => void;
   onAdoptTag: (tag: string) => void;
   onAdoptAllTags: () => void;
+  onAdoptTodo: (text: string) => void;
   onSetReminder: (iso: string) => void;
   onRerun: () => void;
 }
@@ -45,11 +47,13 @@ export function AiResultSheet({
   visible,
   annotation,
   currentTags,
+  currentTasks,
   hasReminder,
   rerunning,
   onClose,
   onAdoptTag,
   onAdoptAllTags,
+  onAdoptTodo,
   onSetReminder,
   onRerun,
 }: AiResultSheetProps) {
@@ -298,11 +302,19 @@ export function AiResultSheet({
                 待办
               </Text>
               {annotation?.todos.map((todo, index) => (
-                <View key={`${todo}-${index}`} style={{ flexDirection: 'row', gap: 8 }}>
+                <View key={`${todo}-${index}`} style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                   <Text style={{ color: theme.colors.accent, fontSize: 13 }}>·</Text>
                   <Text style={{ flex: 1, color: theme.colors.text, fontSize: 13, lineHeight: 19 }}>
                     {todo}
                   </Text>
+                  <Pressable onPress={() => onAdoptTodo(todo)}
+                    disabled={currentTasks.some((task) => task.text === todo)}
+                    accessibilityLabel={`加入待办：${todo}`}
+                    style={{ paddingHorizontal: 8, paddingVertical: 5 }}>
+                    <Text style={{ color: theme.colors.accent, fontSize: 12 }}>
+                      {currentTasks.some((task) => task.text === todo) ? '已加入' : '加入待办'}
+                    </Text>
+                  </Pressable>
                 </View>
               ))}
             </View>

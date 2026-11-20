@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 760" role="img" aria-label="贴纸主题的错落便签列表和插画编辑页设计示意">
+  <defs>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#455044" flood-opacity=".14"/>
+    </filter>
+    <style>
+      .ui{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;fill:#26352a}
+      .title{font-size:20px;font-weight:700}
+      .body{font-size:14px}
+      .meta{font-size:11px;fill:#5e6c60}
+      .doodle{fill:none;stroke:#26352a;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;opacity:.25}
+    </style>
+  </defs>
+  <rect width="860" height="760" fill="#eee9db"/>
+  <text class="ui" x="36" y="44" font-size="24" font-weight="700">贴纸主题 · 冰箱贴布局方向</text>
+  <text class="ui meta" x="37" y="68">自动错落 · 同一便签在列表和编辑页使用同一线稿</text>
+
+  <rect x="32" y="94" width="378" height="628" rx="27" fill="#f9f8f2" stroke="#d6d9cb" stroke-width="2"/>
+  <text class="ui title" x="55" y="132">我的便签</text>
+  <text class="ui meta" x="55" y="155">12 条 · 随手记下</text>
+  <rect x="52" y="175" width="338" height="34" rx="13" fill="#eeede4"/>
+  <text class="ui meta" x="68" y="197">搜索便签、标签、灵感…</text>
+
+  <g transform="rotate(-1.5 221 306)" filter="url(#shadow)">
+    <rect x="55" y="230" width="336" height="154" rx="18" fill="#e9e2bb" stroke="#bdb797" stroke-width="2"/>
+    <circle cx="76" cy="251" r="9" fill="#708c71" stroke="#526c55" stroke-width="2"/>
+    <text class="ui title" x="96" y="271">周末的小计划</text>
+    <text class="ui body" x="78" y="306">去花市，买一束新鲜的花</text>
+    <text class="ui body" x="78" y="331">顺便找一家安静的咖啡馆</text>
+    <text class="ui meta" x="78" y="361">周三更新 · 生活</text>
+    <g class="doodle" transform="translate(280 285) scale(.77)">
+      <path d="M22 50 C18 32 33 23 48 36 C59 22 79 30 76 48 C91 52 88 69 72 70 C68 85 53 86 47 73 C33 81 21 73 25 60 Z"/>
+      <path d="M48 71 C51 88 48 99 45 111 M46 90 C33 83 24 87 22 95 M48 101 C62 91 72 93 76 100"/>
+    </g>
+  </g>
+
+  <g transform="rotate(2 135 490)" filter="url(#shadow)">
+    <rect x="55" y="402" width="161" height="172" rx="17" fill="#f3dfd3" stroke="#d8bfb4" stroke-width="2"/>
+    <circle cx="73" cy="420" r="8" fill="#c88774"/>
+    <text class="ui body" x="73" y="451" font-weight="700">下午茶</text>
+    <text class="ui meta" x="73" y="474">给自己留一点</text>
+    <text class="ui meta" x="73" y="491">发呆时间</text>
+    <g class="doodle" transform="translate(115 490) scale(.6)">
+      <path d="M12 24 C30 18 60 18 78 23 L73 77 C58 83 33 83 19 77 Z M13 26 C32 33 58 32 77 26 M75 39 C93 31 103 46 89 59 L75 63"/>
+      <path d="M32 52 L33 53 M55 52 L56 53 M34 65 C41 70 49 70 56 64"/>
+    </g>
+  </g>
+
+  <g transform="rotate(-2.2 304 514)" filter="url(#shadow)">
+    <rect x="230" y="419" width="158" height="189" rx="17" fill="#deebe3" stroke="#bdcfc2" stroke-width="2"/>
+    <circle cx="249" cy="438" r="8" fill="#7fa181"/>
+    <text class="ui body" x="248" y="468" font-weight="700">散步路线</text>
+    <text class="ui meta" x="248" y="491">沿河走到桥边</text>
+    <g class="doodle" transform="translate(281 500) scale(.72)">
+      <path d="M18 48 C29 33 60 27 82 42 C95 53 91 77 74 84 C50 95 18 79 18 48 Z"/>
+      <path d="M75 48 C93 39 103 42 108 50 C98 56 89 58 79 56 M42 53 L43 54 M57 52 L58 53 M47 65 C53 70 61 69 66 64"/>
+      <path d="M31 84 L26 101 M70 85 L75 101"/>
+    </g>
+  </g>
+
+  <g transform="rotate(-.7 145 655)" filter="url(#shadow)">
+    <rect x="61" y="590" width="158" height="101" rx="17" fill="#e3e8f1" stroke="#c4cbd8" stroke-width="2"/>
+    <circle cx="79" cy="608" r="8" fill="#8b9fb5"/>
+    <text class="ui body" x="79" y="638" font-weight="700">随手画</text>
+    <text class="ui meta" x="79" y="663">今天也有好天气</text>
+  </g>
+
+  <rect x="444" y="94" width="378" height="628" rx="27" fill="#f9f8f2" stroke="#d6d9cb" stroke-width="2"/>
+  <text class="ui title" x="467" y="132">便签编辑</text>
+  <text class="ui meta" x="467" y="155">同一张便签 · 同一幅花朵线稿</text>
+  <rect x="465" y="175" width="336" height="34" rx="13" fill="#eeede4"/>
+  <text class="ui meta" x="480" y="197">‹ 返回        颜色  ·  待办  ·  更多</text>
+  <g transform="rotate(.8 632 452)" filter="url(#shadow)">
+    <rect x="466" y="230" width="333" height="459" rx="20" fill="#e9e2bb" stroke="#bdb797" stroke-width="2"/>
+    <circle cx="490" cy="255" r="9" fill="#708c71" stroke="#526c55" stroke-width="2"/>
+    <text class="ui title" x="514" y="265">周末的小计划</text>
+    <path d="M484 289 H782" stroke="#c5bfa2"/>
+    <text class="ui body" x="488" y="327">去花市，买一束新鲜的花。</text>
+    <text class="ui body" x="488" y="354">顺便找一家安静的咖啡馆，</text>
+    <text class="ui body" x="488" y="381">坐在窗边写一点东西。</text>
+    <g class="doodle" transform="translate(570 405) scale(1.85)" opacity=".55">
+      <path d="M22 50 C18 32 33 23 48 36 C59 22 79 30 76 48 C91 52 88 69 72 70 C68 85 53 86 47 73 C33 81 21 73 25 60 Z"/>
+      <path d="M48 71 C51 88 48 99 45 111 M46 90 C33 83 24 87 22 95 M48 101 C62 91 72 93 76 100"/>
+    </g>
+    <text class="ui meta" x="488" y="653">插画在文字下层，不影响输入与滚动</text>
+  </g>
+</svg>

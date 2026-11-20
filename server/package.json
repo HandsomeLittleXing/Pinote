@@ -1,6 +1,7 @@
 {
   "name": "sticker-note-sync-server",
   "version": "1.0.0",
+  "author": "handsomelittlexing",
   "description": "StickerNote 云同步后端（部署在 ECS，轻量单进程）",
   "main": "dist/index.js",
   "scripts": {
@@ -9,7 +10,7 @@
     "start": "node dist/index.js",
     "db:init": "tsx src/db/init.ts",
     "db:migrate": "tsx src/db/migrate.ts",
-    "test": "tsx --test test/aiCredentials.test.ts test/aiRewrite.test.ts test/aiRoutes.test.ts test/aiKeyTransport.test.ts"
+    "test": "tsx --test test/aiCredentials.test.ts test/aiRewrite.test.ts test/aiRoutes.test.ts test/aiKeyTransport.test.ts test/syncTasks.test.ts test/aiStandalone.test.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

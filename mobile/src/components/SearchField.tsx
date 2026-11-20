@@ -1,5 +1,8 @@
 import React from 'react';
-import { Pressable, TextInput } from 'react-native';
+import {
+  Pressable,
+} from 'react-native';
+import { TextInput } from './AppText';
 import { Search, X } from 'lucide-react-native';
 import { GlassSurface } from './GlassSurface';
 import { useAppTheme } from '../theme';
@@ -22,7 +25,10 @@ export function SearchField({
     <GlassSurface
       blur
       radius={theme.radius.lg}
-      style={{ width: '100%' }}
+      style={{
+        width: '100%',
+        backgroundColor: theme.skin === 'glass' ? theme.colors.inputBackground : undefined,
+      }}
       contentStyle={{
         height: 46,
         flexDirection: 'row',

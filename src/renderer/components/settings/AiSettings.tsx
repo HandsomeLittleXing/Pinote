@@ -7,14 +7,14 @@ import { getApi } from '../../utils/api';
 import { isSecureAiKeyServerUrl } from '../../../shared/aiKeyTransport';
 import type { AIStatus, AppSettings } from '../../../shared/types';
 
-const AI_CONSENT_VERSION = 1;
+const AI_CONSENT_VERSION = 2;
 
 interface AiSettingsProps {
   settings: AppSettings;
   update: (patch: Partial<AppSettings>) => Promise<void>;
 }
 
-/** AI 整理设置：Key 只在服务器，客户端只控制开关与展示 */
+/** AI 来源与 Key 设置。 */
 export function AiSettings({ settings, update }: AiSettingsProps) {
   const [status, setStatus] = useState<AIStatus | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -24,7 +24,8 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
   const [feedback, setFeedback] = useState('');
   const [linked, setLinked] = useState<boolean | null>(null);
   const [keyTransportSecure, setKeyTransportSecure] = useState<boolean | null>(null);
-  const canChangeKey = linked === true && keyTransportSecure === true;
+  const deviceSource = settings.aiSource === 'device';
+  const canChangeKey = deviceSource || (linked === true && keyTransportSecure === true);
 
   const runKeyAction = async (action: 'save' | 'test' | 'delete') => {
     setBusy(true);
@@ -33,7 +34,9 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
       if (action === 'save') setStatus(await getApi().ai.saveKey(apiKey));
       if (action === 'delete') setStatus(await getApi().ai.deleteKey());
       if (action === 'test') await getApi().ai.testKey();
-      setFeedback(action === 'test' ? '连接正常' : action === 'save' ? '已保存到同步空间' : '已移除空间 Key');
+      setFeedback(action === 'test' ? '连接正常' : action === 'save'
+        ? deviceSource ? '已安全保存到本机' : '已保存到同步空间'
+        : deviceSource ? '已移除本机 Key' : '已移除空间 Key');
     } catch (error) {
       const message = error instanceof Error ? error.message : '操作失败';
       setFeedback(message.replace(/^Error invoking remote method '[^']+': Error: /, ''));
@@ -55,7 +58,7 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
         setStatus({ configured: false, model: '' });
         setFeedback(error instanceof Error ? error.message : '无法读取 AI 状态');
       });
-  }, []);
+  }, [settings.aiSource]);
 
   const handleToggle = (checked: boolean) => {
     if (!checked) {
@@ -74,9 +77,25 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
       <SectionCard
         title="AI 整理"
         icon={<Sparkles size={16} className="text-ink-muted" />}
-        description="手动触发；Key 保存在同步服务器，客户端不保存。"
+        description={deviceSource
+          ? '手动触发；本机 Key 直连 DeepSeek，不需要同步服务器。'
+          : '手动触发；Key 保存在同步服务器。'}
       >
         <div className="space-y-4">
+          <div className="flex gap-2">
+            <button type="button" onClick={() => {
+              if (!deviceSource) void update({ aiSource: 'device', aiEnabled: false, aiConsentVersion: 0 });
+            }}
+              className={`rounded-lg px-3 py-1.5 text-xs ${deviceSource ? 'bg-accent text-white' : 'bg-muted text-ink'}`}>
+              本机直连
+            </button>
+            <button type="button" disabled={!linked} onClick={() => {
+              if (deviceSource) void update({ aiSource: 'sync', aiEnabled: false, aiConsentVersion: 0 });
+            }}
+              className={`rounded-lg px-3 py-1.5 text-xs disabled:opacity-40 ${!deviceSource ? 'bg-accent text-white' : 'bg-muted text-ink'}`}>
+              同步空间
+            </button>
+          </div>
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-ink">允许 AI 整理便签</p>
@@ -93,22 +112,24 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
 
           <div className="rounded-md bg-muted/60 p-2.5 text-[11px]">
             {status === null ? (
-              <span className="text-ink-subtle">正在检查服务器 AI 配置…</span>
+              <span className="text-ink-subtle">正在检查 AI 配置…</span>
             ) : status.configured ? (
               <span className="text-ink-muted">
-                {status.source === 'space' ? `同步空间 Key ·••••${status.keyHint || ''}` : '服务器默认 Key'} · 模型 <span className="font-medium text-ink">{status.model}</span>
+                {deviceSource ? `本机 Key ·••••${status.keyHint || ''}`
+                  : status.source === 'space' ? `同步空间 Key ·••••${status.keyHint || ''}` : '服务器默认 Key'}
+                {' · 模型 '}<span className="font-medium text-ink">{status.model}</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-ink-muted">
                 <CloudOff size={12} />
-                {linked === false ? '请先连接同步服务' : '尚未配置 AI Key'}
+                {!deviceSource && linked === false ? '请先连接同步服务' : '尚未配置 AI Key'}
               </span>
             )}
           </div>
 
           <div className="space-y-2 border-t border-line/10 pt-3">
             <label htmlFor="ai-api-key" className="text-[13px] font-medium text-ink">API Key</label>
-            {linked && keyTransportSecure === false && (
+            {!deviceSource && linked && keyTransportSecure === false && (
               <p role="status" className="text-xs leading-relaxed text-warning">
                 当前同步地址使用 HTTP。请先到「手机同步」设置 HTTPS 地址，再保存或移除 API Key。服务器默认 Key 仍可用于 AI 整理。
               </p>
@@ -122,7 +143,7 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={busy || !canChangeKey || !apiKey.trim()} onClick={() => void runKeyAction('save')} className="rounded-lg bg-accent px-3 py-1.5 text-xs text-white disabled:opacity-50">保存</button>
               <button type="button" disabled={busy || !status?.configured} onClick={() => void runKeyAction('test')} className="rounded-lg border border-line/20 px-3 py-1.5 text-xs text-ink disabled:opacity-50">测试连接</button>
-              <button type="button" disabled={busy || !canChangeKey || status?.source !== 'space'} onClick={() => void runKeyAction('delete')} className="rounded-lg border border-line/20 px-3 py-1.5 text-xs text-ink disabled:opacity-50">移除</button>
+              <button type="button" disabled={busy || !canChangeKey || (deviceSource ? !status?.configured : status?.source !== 'space')} onClick={() => void runKeyAction('delete')} className="rounded-lg border border-line/20 px-3 py-1.5 text-xs text-ink disabled:opacity-50">移除</button>
             </div>
             {feedback && <p role="status" className="text-xs text-ink-muted">{feedback}</p>}
           </div>
@@ -147,8 +168,9 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
           </div>
 
           <p className="text-[11px] leading-relaxed text-ink-subtle">
-            点击 AI 整理后，当前便签的纯文本会通过你的同步服务器发送给配置的模型（默认 DeepSeek）。
-            不会发送图片；AI 结果会随便签同步到已配对设备。
+            {deviceSource
+              ? '点击 AI 整理后，当前便签纯文本会由本机直接发送给 DeepSeek，可能产生费用；不会发送图片。'
+              : '点击 AI 整理后，当前便签纯文本会通过同步服务器发送给配置的模型；结果会随便签同步。'}
           </p>
         </div>
       </SectionCard>
@@ -156,7 +178,9 @@ export function AiSettings({ settings, update }: AiSettingsProps) {
       <ConfirmDialog
         open={confirmOpen}
         title="开启 AI 整理"
-        message="点击 AI 整理时，当前便签的纯文本会通过你的同步服务器发送给 DeepSeek 进行分析。结果会随便签同步到已配对设备。不会自动分析。是否同意并开启？"
+        message={deviceSource
+          ? '点击 AI 整理时，便签纯文本会从本机直接发送给 DeepSeek，可能产生费用。不会自动分析或发送图片。是否同意并开启？'
+          : '点击 AI 整理时，便签纯文本会经同步服务器发送给配置的模型，结果可随便签同步。不会自动分析。是否同意并开启？'}
         confirmLabel="同意并开启"
         confirmVariant="primary"
         onCancel={() => setConfirmOpen(false)}

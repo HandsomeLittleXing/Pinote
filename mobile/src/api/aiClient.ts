@@ -2,6 +2,16 @@ import type { AIAnnotateResponse, AIStatus, AIRewriteRequest, AIRewriteResponse 
 import { getLocalTimeZone } from '@shared/ai';
 import { isSecureAiKeyServerUrl } from '@shared/aiKeyTransport';
 import { getCredentials } from '../storage/credentials';
+import { getPreferences } from '../storage/preferences';
+import {
+  annotateDevice,
+  deleteDeviceKey,
+  getDeviceAIStatus,
+  rewriteDevice,
+  saveDeviceKey,
+  searchDevice,
+  testDeviceKey,
+} from './deviceAi';
 
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const creds = await getCredentials();
@@ -54,23 +64,36 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 export async function getAIStatus(): Promise<AIStatus> {
+  if ((await getPreferences()).aiSource === 'device') return getDeviceAIStatus();
   return request<AIStatus>('/ai/status', { method: 'GET' });
 }
 
 export async function saveAIKey(apiKey: string): Promise<AIStatus> {
+  if ((await getPreferences()).aiSource === 'device') return saveDeviceKey(apiKey);
   return request('/ai/key', { method: 'PUT', body: JSON.stringify({ apiKey }) });
 }
 
 export async function testAIKey(): Promise<void> {
+  if ((await getPreferences()).aiSource === 'device') return testDeviceKey();
   await request('/ai/key/test', { method: 'POST' });
 }
 
 export async function deleteAIKey(): Promise<AIStatus> {
+  if ((await getPreferences()).aiSource === 'device') return deleteDeviceKey();
   return request('/ai/key', { method: 'DELETE' });
 }
 
 export async function rewriteNote(input: AIRewriteRequest): Promise<AIRewriteResponse> {
+  if ((await getPreferences()).aiSource === 'device') return rewriteDevice(input);
   return request('/ai/rewrite', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function semanticSearch(query: string, candidates: Array<{ id: string; text: string }>): Promise<string[]> {
+  if ((await getPreferences()).aiSource === 'device') return searchDevice(query, candidates);
+  const result = await request<{ ids: string[] }>('/ai/search', {
+    method: 'POST', body: JSON.stringify({ query, candidates }),
+  });
+  return result.ids;
 }
 
 export async function annotateNote(
@@ -78,6 +101,7 @@ export async function annotateNote(
   contentHash: string,
   force = false
 ): Promise<AIAnnotateResponse> {
+  if ((await getPreferences()).aiSource === 'device') return annotateDevice(plainText, contentHash);
   return request<AIAnnotateResponse>('/ai/annotate', {
     method: 'POST',
     body: JSON.stringify({

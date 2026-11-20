@@ -20,6 +20,7 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
           reminderTriggered INTEGER NOT NULL,
           windowState TEXT,
           ai TEXT,
+          tasks TEXT,
           createdAt TEXT NOT NULL,
           updatedAt TEXT NOT NULL,
           deletedAt TEXT
@@ -29,6 +30,9 @@ function getDb(): Promise<SQLite.SQLiteDatabase> {
       const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(stickers)');
       if (!columns.some((column) => column.name === 'ai')) {
         await db.execAsync('ALTER TABLE stickers ADD COLUMN ai TEXT');
+      }
+      if (!columns.some((column) => column.name === 'tasks')) {
+        await db.execAsync('ALTER TABLE stickers ADD COLUMN tasks TEXT');
       }
       return db;
     });
@@ -48,6 +52,7 @@ interface StickerRow {
   reminderTriggered: number;
   windowState: string | null;
   ai: string | null;
+  tasks: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -75,6 +80,7 @@ function rowToSticker(row: StickerRow): Sticker {
     reminderTriggered: !!row.reminderTriggered,
     windowState: row.windowState ? JSON.parse(row.windowState) : { x: 0, y: 0, width: 240, height: 200 },
     ai: parseAI(row.ai),
+    tasks: row.tasks ? JSON.parse(row.tasks) : [],
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     deletedAt: row.deletedAt,
@@ -97,6 +103,14 @@ export async function getAllStickersRaw(): Promise<Sticker[]> {
   return rows.map(rowToSticker);
 }
 
+export async function getDeletedStickers(): Promise<Sticker[]> {
+  const db = await getDb();
+  const rows = await db.getAllAsync<StickerRow>(
+    'SELECT * FROM stickers WHERE deletedAt IS NOT NULL ORDER BY deletedAt DESC'
+  );
+  return rows.map(rowToSticker);
+}
+
 export async function getStickerById(id: string): Promise<Sticker | null> {
   const db = await getDb();
   const row = await db.getFirstAsync<StickerRow>('SELECT * FROM stickers WHERE id = ?', [id]);
@@ -108,13 +122,13 @@ export async function upsertSticker(sticker: Sticker): Promise<void> {
   const db = await getDb();
   await db.runAsync(
     `INSERT INTO stickers
-       (id, content, color, tags, isPinned, isVisible, opacity, reminder, reminderTriggered, windowState, ai, createdAt, updatedAt, deletedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (id, content, color, tags, isPinned, isVisible, opacity, reminder, reminderTriggered, windowState, ai, tasks, createdAt, updatedAt, deletedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        content=excluded.content, color=excluded.color, tags=excluded.tags,
        isPinned=excluded.isPinned, isVisible=excluded.isVisible, opacity=excluded.opacity,
        reminder=excluded.reminder, reminderTriggered=excluded.reminderTriggered,
-       windowState=excluded.windowState, ai=excluded.ai,
+        windowState=excluded.windowState, ai=excluded.ai, tasks=excluded.tasks,
        createdAt=excluded.createdAt, updatedAt=excluded.updatedAt, deletedAt=excluded.deletedAt`,
     [
       sticker.id,
@@ -128,11 +142,26 @@ export async function upsertSticker(sticker: Sticker): Promise<void> {
       sticker.reminderTriggered ? 1 : 0,
       JSON.stringify(sticker.windowState),
       sticker.ai ? JSON.stringify(sticker.ai) : null,
+      JSON.stringify(sticker.tasks ?? []),
       sticker.createdAt,
       sticker.updatedAt,
       sticker.deletedAt,
     ]
   );
+}
+
+export async function restoreSticker(id: string): Promise<void> {
+  const existing = await getStickerById(id);
+  if (!existing?.deletedAt) return;
+  await upsertSticker({ ...existing, deletedAt: null, isVisible: true, updatedAt: new Date().toISOString() });
+}
+
+export async function markReminderTriggered(id: string): Promise<boolean> {
+  const existing = await getStickerById(id);
+  if (!existing || existing.deletedAt || existing.reminderTriggered ||
+      !existing.reminder || Date.parse(existing.reminder) > Date.now()) return false;
+  await upsertSticker({ ...existing, reminderTriggered: true, updatedAt: new Date().toISOString() });
+  return true;
 }
 
 /** 软删除：写入 tombstone，供同步到其他设备 */
@@ -146,13 +175,15 @@ export async function softDeleteSticker(id: string): Promise<void> {
 export async function applyRemoteSticker(remote: Sticker): Promise<void> {
   const existing = await getStickerById(remote.id);
   const remoteHasAI = Object.prototype.hasOwnProperty.call(remote, 'ai');
+  const remoteHasTasks = Object.prototype.hasOwnProperty.call(remote, 'tasks');
   if (existing && !remoteHasAI && existing.content === remote.content) {
     // 旧服务端/旧客户端不携带 ai：内容没变时保留本地 AI 结果
-    await upsertSticker({ ...remote, ai: existing.ai });
+    await upsertSticker({ ...remote, ai: existing.ai, tasks: remoteHasTasks ? remote.tasks : existing.tasks });
     return;
   }
   await upsertSticker({
     ...remote,
     ai: normalizeAIAnnotation(remote.ai),
+    tasks: remoteHasTasks ? remote.tasks : existing?.tasks ?? [],
   });
 }

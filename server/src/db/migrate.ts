@@ -45,6 +45,16 @@ async function migrateAiColumn(): Promise<void> {
   console.log('迁移完成：stickers 增加 ai JSON 列');
 }
 
+async function migrateTasksColumn(): Promise<void> {
+  const [rows] = await pool.query(
+    `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stickers' AND COLUMN_NAME = 'tasks'`
+  );
+  if ((rows as Array<{ COLUMN_NAME: string }>).length === 0) {
+    await pool.query('ALTER TABLE stickers ADD COLUMN tasks JSON NULL AFTER ai');
+  }
+}
+
 async function migrateAiCredentials(): Promise<void> {
   await pool.query(`CREATE TABLE IF NOT EXISTS ai_credentials (
     sync_space_id CHAR(36) NOT NULL COMMENT '所属同步空间，唯一配置一份 AI 凭据',
@@ -65,6 +75,7 @@ async function migrateAiCredentials(): Promise<void> {
 async function main(): Promise<void> {
   await migratePrimaryKey();
   await migrateAiColumn();
+  await migrateTasksColumn();
   await migrateAiCredentials();
   await pool.end();
 }

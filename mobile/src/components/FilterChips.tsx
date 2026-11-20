@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Text, TextInput } from './AppText';
 import { useAppTheme } from '../theme';
 
 export interface FilterOption {

@@ -6,8 +6,9 @@ import { TrayManager } from './tray';
 import { ShortcutManager } from './shortcuts';
 import { ReminderScheduler } from './reminders';
 import { SyncManager } from './sync';
-import { IpcHandlerRegistry } from './ipc-handlers';
+import { IpcHandlerRegistry, syncAutoStart } from './ipc-handlers';
 import { IPC } from '../shared/ipc-channels';
+import { resolveAiSource } from '../shared/aiSource';
 
 let stickerStore: StickerStore;
 let windowManager: StickerWindowManager;
@@ -49,20 +50,31 @@ if (!gotSingleInstanceLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
+    void trayManager?.createTray();
     if (windowManager) {
       windowManager.createListPanelWindow();
     }
   });
 
-  app.whenReady().then(() => {
+  app.setAppUserModelId('com.stickernote.app');
+
+  app.whenReady().then(async () => {
     stickerStore = new StickerStore();
+    if (app.isPackaged && stickerStore.getSettings().autoStart) {
+      syncAutoStart(true);
+    }
     windowManager = new StickerWindowManager(stickerStore, getPreloadPath, getRendererUrl);
     reminderScheduler = new ReminderScheduler(stickerStore, windowManager);
     trayManager = new TrayManager(stickerStore, windowManager);
-    trayManager.createTray();
+    await trayManager.createTray();
     shortcutManager = new ShortcutManager(stickerStore, windowManager);
     shortcutManager.registerAll();
     syncManager = new SyncManager(stickerStore);
+    if (!stickerStore.hasStoredAiSource()) {
+      stickerStore.setSettings({
+        aiSource: resolveAiSource(undefined, stickerStore.getSettings().aiEnabled, syncManager.getStatus().linked),
+      });
+    }
 
     ipcRegistry = new IpcHandlerRegistry(
       stickerStore,

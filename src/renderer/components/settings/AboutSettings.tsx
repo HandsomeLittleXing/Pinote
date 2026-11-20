@@ -31,12 +31,13 @@ export function AboutSettings({ settings }: AboutSettingsProps) {
     <SectionCard title="关于" icon={<Info size={16} className="text-ink-muted" />}>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-ink">电脑便签</span>
+          <span className="text-sm text-ink">贴记</span>
           <span className="text-sm tabular-nums text-ink-muted">
             v{version || '—'}
           </span>
         </div>
         <p className="text-xs text-ink-subtle">开机即在，随手一贴</p>
+        <p className="text-xs text-ink-subtle">作者：handsomelittlexing</p>
 
         <div className="space-y-1.5 rounded-lg bg-muted p-3 text-xs text-ink-muted">
           <p>

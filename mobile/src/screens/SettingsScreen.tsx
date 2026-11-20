@@ -1,21 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft,
   Cloud,
+  Info,
   Palette,
   Sparkles,
   SunMoon,
+  Type,
   Unplug,
 } from 'lucide-react-native';
 import { SKIN_DEFINITIONS } from '@shared/skins';
@@ -29,8 +32,9 @@ import { useAppTheme, useThemeController } from '../theme';
 import { getCredentials } from '../storage/credentials';
 import { unpair } from '../api/syncClient';
 import { deleteAIKey, getAIStatus, saveAIKey, testAIKey } from '../api/aiClient';
+import { loadFontLicenseText } from '../font';
 
-const AI_CONSENT_VERSION = 1;
+const AI_CONSENT_VERSION = 3;
 
 const MODE_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
   { value: 'system', label: '跟随系统' },
@@ -41,6 +45,8 @@ const MODE_OPTIONS: Array<{ value: ThemeMode; label: string }> = [
 interface Props {
   onBack: () => void;
   onUnpaired: () => void;
+  onOpenPairing: () => void;
+  paired: boolean;
 }
 
 function Section({
@@ -88,7 +94,7 @@ function Section({
   );
 }
 
-export default function SettingsScreen({ onBack, onUnpaired }: Props) {
+export default function SettingsScreen({ onBack, onUnpaired, onOpenPairing, paired }: Props) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const { preferences, setSkin, setThemeMode, updatePreferences } = useThemeController();
@@ -97,11 +103,12 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [keyBusy, setKeyBusy] = useState(false);
-  const [paired, setPaired] = useState(false);
   const [aiStatusError, setAiStatusError] = useState('');
+  const deviceSource = preferences.aiSource === 'device';
+  const [fontLicenseVisible, setFontLicenseVisible] = useState(false);
+  const [fontLicenseText, setFontLicenseText] = useState('');
 
   useEffect(() => {
-    void getCredentials().then((value) => setPaired(!!value.token));
     void getAIStatus().then(setAiStatus).catch((error) => {
       setAiStatus({ configured: false, model: '', source: 'none' });
       setAiStatusError(error instanceof Error ? error.message : '无法读取 AI 状态');
@@ -115,14 +122,29 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
       if (action === 'delete') setAiStatus(await deleteAIKey());
       if (action === 'test') await testAIKey();
       setAiStatusError('');
-      Alert.alert('AI 配置', action === 'test' ? '连接正常' : action === 'save' ? '已保存到同步空间' : '已移除空间 Key');
+      Alert.alert('AI 配置', action === 'test' ? '连接正常' : action === 'save'
+        ? deviceSource ? '已安全保存到本机' : '已保存到同步空间'
+        : deviceSource ? '已移除本机 Key' : '已移除空间 Key');
     } catch (error) {
       Alert.alert('AI 配置失败', error instanceof Error ? error.message : '请稍后重试');
     } finally {
       setApiKey('');
       setKeyBusy(false);
     }
-  }, [apiKey]);
+  }, [apiKey, deviceSource]);
+
+  const changeAiSource = useCallback(async (source: 'device' | 'sync') => {
+    if (source === preferences.aiSource) return;
+    if (source === 'sync' && !paired) return;
+    await updatePreferences({ aiSource: source, aiEnabled: false, aiConsentVersion: 0 });
+    setAiStatus(null);
+    setAiStatusError('');
+    try {
+      setAiStatus(await getAIStatus());
+    } catch (error) {
+      setAiStatusError(error instanceof Error ? error.message : '无法读取 AI 状态');
+    }
+  }, [paired, preferences.aiSource, updatePreferences]);
 
   useEffect(() => {
     void getCredentials().then((creds) => setServerUrl(creds.serverUrl || '未配置'));
@@ -140,7 +162,9 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
       }
       Alert.alert(
         'AI 整理与隐私',
-        '开启后，当你点击「AI 整理」时，当前便签的纯文本会通过你的同步服务器发送给 DeepSeek 进行分析，结果会随便签同步到已配对设备。不会自动分析，也不会发送图片。',
+        deviceSource
+          ? '点击「AI 整理」时，当前便签纯文本会从手机直接发送给 DeepSeek；点击「语义查找」时，会发送最近最多 80 条便签各前 300 字。可能产生费用，两项操作都需手动触发，不发送图片。'
+          : '点击「AI 整理」时，当前便签纯文本会经同步服务器发送给 DeepSeek；点击「语义查找」时，会发送最近最多 80 条便签各前 300 字。两项操作都需手动触发，不发送图片。整理结果会随便签同步。',
         [
           { text: '取消', style: 'cancel' },
           {
@@ -154,7 +178,7 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
         ]
       );
     },
-    [preferences.aiConsentVersion, updatePreferences]
+    [deviceSource, preferences.aiConsentVersion, updatePreferences]
   );
 
   const handleUnpair = useCallback(() => {
@@ -165,11 +189,14 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
         style: 'destructive',
         onPress: async () => {
           await unpair();
+          await updatePreferences({ aiSource: 'device', aiEnabled: false, aiConsentVersion: 0 });
+          setAiStatus(await getAIStatus().catch(() => ({ configured: false, model: '', source: 'device' as const })));
+          setServerUrl('未配置');
           onUnpaired();
         },
       },
     ]);
-  }, [onUnpaired]);
+  }, [onUnpaired, updatePreferences]);
 
   const renderSkin = (skin: SkinId) => {
     const definition = SKIN_DEFINITIONS.find((item) => item.id === skin);
@@ -314,6 +341,17 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
 
           <Section title="AI 整理" icon={<Sparkles size={14} color={theme.colors.textMuted} />}>
             <View style={{ gap: theme.spacing.md }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable onPress={() => void changeAiSource('device')}
+                  style={{ padding: 8, borderRadius: 8, backgroundColor: deviceSource ? theme.colors.accent : theme.colors.surfaceGlass }}>
+                  <Text style={{ color: deviceSource ? theme.colors.onAccent : theme.colors.text, fontSize: 12 }}>本机直连</Text>
+                </Pressable>
+                <Pressable disabled={!paired} onPress={() => void changeAiSource('sync')}
+                  style={{ padding: 8, borderRadius: 8, opacity: paired ? 1 : 0.4,
+                    backgroundColor: !deviceSource ? theme.colors.accent : theme.colors.surfaceGlass }}>
+                  <Text style={{ color: !deviceSource ? theme.colors.onAccent : theme.colors.text, fontSize: 12 }}>同步空间</Text>
+                </Pressable>
+              </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
@@ -327,7 +365,7 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
                       marginTop: 2,
                     }}
                   >
-                    只在手动点击时调用；Key 保存在你的同步服务器。
+                    {deviceSource ? '只在手动点击时调用；Key 安全保存在本机。' : '只在手动点击时调用；Key 保存在同步服务器。'}
                   </Text>
                 </View>
                 <Switch
@@ -339,13 +377,14 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
               </View>
               <View style={styles.divider(theme.colors.border)} />
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {!paired ? '请先连接同步服务' : aiStatus === null ? '正在检查 AI 配置…' : aiStatus.source === 'space'
-                  ? `同步空间 Key ·••••${aiStatus.keyHint || ''}`
+                {!deviceSource && !paired ? '请先连接同步服务' : aiStatus === null ? '正在检查 AI 配置…'
+                  : deviceSource && aiStatus.configured ? `本机 Key ·••••${aiStatus.keyHint || ''}`
+                  : aiStatus.source === 'space' ? `同步空间 Key ·••••${aiStatus.keyHint || ''}`
                   : aiStatus.configured ? '服务器默认 Key' : '尚未配置 AI Key'}
               </Text>
-              {paired && !!aiStatusError && <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{aiStatusError}</Text>}
+              {!!aiStatusError && <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{aiStatusError}</Text>}
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                <TextInput value={apiKey} onChangeText={setApiKey} secureTextEntry={!showKey} editable={paired}
+                <TextInput value={apiKey} onChangeText={setApiKey} secureTextEntry={!showKey} editable={deviceSource || paired}
                   autoCapitalize="none" autoCorrect={false} placeholder="输入新的 API Key"
                   placeholderTextColor={theme.colors.textSubtle}
                   style={{ flex: 1, borderRadius: theme.radius.md, borderWidth: 1,
@@ -354,13 +393,13 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
                 <Pressable onPress={() => setShowKey(!showKey)}><Text style={{ color: theme.colors.accent }}>{showKey ? '隐藏' : '显示'}</Text></Pressable>
               </View>
               <View style={{ flexDirection: 'row', gap: 16 }}>
-                <Pressable disabled={keyBusy || !paired || !apiKey.trim()} onPress={() => void handleKeyAction('save')}>
+                <Pressable disabled={keyBusy || (!deviceSource && !paired) || !apiKey.trim()} onPress={() => void handleKeyAction('save')}>
                   <Text style={{ color: theme.colors.accent, opacity: keyBusy || !apiKey.trim() ? 0.5 : 1 }}>保存</Text>
                 </Pressable>
                 <Pressable disabled={keyBusy || !aiStatus?.configured} onPress={() => void handleKeyAction('test')}>
                   <Text style={{ color: theme.colors.accent }}>测试连接</Text>
                 </Pressable>
-                <Pressable disabled={keyBusy || aiStatus?.source !== 'space'} onPress={() => void handleKeyAction('delete')}>
+                <Pressable disabled={keyBusy || (deviceSource ? !aiStatus?.configured : aiStatus?.source !== 'space')} onPress={() => void handleKeyAction('delete')}>
                   <Text style={{ color: theme.colors.textMuted }}>移除</Text>
                 </Pressable>
               </View>
@@ -414,7 +453,11 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
             >
               {serverUrl}
             </Text>
-            <Pressable
+            {!paired ? <Pressable onPress={onOpenPairing}
+              style={{ paddingVertical: 10, alignItems: 'center', borderRadius: theme.radius.md,
+                backgroundColor: theme.colors.accent }}>
+              <Text style={{ color: theme.colors.onAccent, fontSize: 13 }}>连接同步服务</Text>
+            </Pressable> : <Pressable
               onPress={handleUnpair}
               style={{
                 flexDirection: 'row',
@@ -431,6 +474,25 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
               <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: '600' }}>
                 解除配对
               </Text>
+            </Pressable>}
+          </Section>
+
+          <Section title="关于贴记" icon={<Info size={14} color={theme.colors.textMuted} />}>
+            <Text style={{ color: theme.colors.text, fontSize: 13 }}>作者：handsomelittlexing</Text>
+          </Section>
+
+          <Section title="字体" icon={<Type size={14} color={theme.colors.textMuted} />}>
+            <Text style={{ color: theme.colors.text, fontSize: 13 }}>莲生灵光体 · 作者：莲生</Text>
+            <Pressable onPress={() => {
+              setFontLicenseVisible(true);
+              void loadFontLicenseText().then(setFontLicenseText).catch(() => setFontLicenseText('授权文件读取失败'));
+            }}>
+              <Text style={{ color: theme.colors.accent, fontSize: 12, marginTop: 6 }}>
+                查看完整字体授权
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => void Linking.openURL('https://github.com/kim-wing/liansheng-lingguangti')}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 6 }}>查看字体项目</Text>
             </Pressable>
           </Section>
 
@@ -441,6 +503,21 @@ export default function SettingsScreen({ onBack, onUnpaired }: Props) {
             </Text>
           </View>
         </ScrollView>
+        <Modal visible={fontLicenseVisible} animationType="slide" onRequestClose={() => setFontLicenseVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: theme.colors.backgroundStart, padding: theme.spacing.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.md }}>
+              <Text style={{ flex: 1, color: theme.colors.text, fontSize: 18, fontWeight: '600' }}>字体授权</Text>
+              <Pressable onPress={() => setFontLicenseVisible(false)}>
+                <Text style={{ color: theme.colors.accent, fontSize: 14 }}>关闭</Text>
+              </Pressable>
+            </View>
+            <ScrollView>
+              <Text style={{ color: theme.colors.text, fontSize: 12, lineHeight: 20 }}>
+                {fontLicenseText || '加载中…'}
+              </Text>
+            </ScrollView>
+          </View>
+        </Modal>
       </View>
     </ScreenBackground>
   );

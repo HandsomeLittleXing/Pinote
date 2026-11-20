@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  View,
+} from 'react-native';
+import { Text } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AIRewriteResponse } from '@shared/types';
 import { useAppTheme } from '../theme';

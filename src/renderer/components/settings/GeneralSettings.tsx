@@ -36,7 +36,7 @@ export function GeneralSettings({ settings, update }: GeneralSettingsProps) {
       <SectionCard
         title="启动"
         icon={<Rocket size={16} className="text-ink-muted" />}
-        description="系统启动时自动运行电脑便签。"
+        description="系统启动时自动运行贴记。"
       >
         <div className="flex items-center justify-between">
           <span className="text-sm text-ink">开机自启动</span>

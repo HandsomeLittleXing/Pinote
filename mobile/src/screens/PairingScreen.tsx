@@ -7,10 +7,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowRight, QrCode, Smartphone, X } from 'lucide-react-native';
@@ -26,9 +25,10 @@ const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SERVER_URL ?? '';
 
 interface Props {
   onPaired: () => void;
+  onBack: () => void;
 }
 
-export default function PairingScreen({ onPaired }: Props) {
+export default function PairingScreen({ onPaired, onBack }: Props) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
@@ -183,6 +183,9 @@ export default function PairingScreen({ onPaired }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <Pressable onPress={onBack} style={{ alignSelf: 'flex-start', marginBottom: 18, paddingVertical: 6 }}>
+            <Text style={{ color: theme.colors.accent, fontSize: 13 }}>返回设置</Text>
+          </Pressable>
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
             <GlassSurface
               radius={999}
@@ -199,7 +202,7 @@ export default function PairingScreen({ onPaired }: Props) {
                 color: theme.colors.text,
               }}
             >
-              连接电脑便签
+              连接贴记桌面端
             </Text>
             <Text
               style={{

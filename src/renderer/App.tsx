@@ -28,9 +28,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (pageType === 'list') {
-      document.title = '电脑便签 - 便签列表';
+      document.title = '贴记 - 便签列表';
     } else if (pageType === 'settings') {
-      document.title = '电脑便签 - 设置';
+      document.title = '贴记 - 设置';
     }
   }, [pageType]);
 

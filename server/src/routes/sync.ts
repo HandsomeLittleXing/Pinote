@@ -26,6 +26,7 @@ interface SyncSticker {
   deletedAt: string | null;
   /** 旧客户端不发送该字段；显式 null 表示清空 */
   ai?: AIAnnotation | null;
+  tasks?: Array<{ id: string; text: string; done: boolean }>;
 }
 
 interface SyncRow {
@@ -41,6 +42,7 @@ interface SyncRow {
   reminder_triggered: number;
   window_state: unknown;
   ai: unknown;
+  tasks: unknown;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -62,6 +64,7 @@ function rowToSticker(row: SyncRow): SyncSticker {
     updatedAt: new Date(row.updated_at).toISOString(),
     deletedAt: row.deleted_at ? new Date(row.deleted_at).toISOString() : null,
     ai: normalizeStoredAI(row.ai),
+    tasks: Array.isArray(row.tasks) ? row.tasks as SyncSticker['tasks'] : [],
   };
 }
 
@@ -103,18 +106,24 @@ syncRouter.post(
       const hasAI = Object.prototype.hasOwnProperty.call(sticker, 'ai');
       const aiValue = hasAI ? sanitizeIncomingAI(sticker.ai) : null;
       const aiUpdate = hasAI ? 'ai=VALUES(ai)' : 'ai=ai';
+      const hasTasks = Object.prototype.hasOwnProperty.call(sticker, 'tasks');
+      const tasks = hasTasks && Array.isArray(sticker.tasks)
+        ? sticker.tasks.filter((task) => typeof task?.id === 'string' && task.id.length <= 100 &&
+            typeof task.text === 'string' && task.text.length <= 300 && typeof task.done === 'boolean').slice(0, 50)
+        : [];
+      const tasksUpdate = hasTasks ? 'tasks=VALUES(tasks)' : 'tasks=tasks';
 
       // upsert：主键为 (sync_space_id, id)，并发下也不会冲突
       await pool.query(
         `INSERT INTO stickers
            (sync_space_id, id, content, color, tags, is_pinned, is_visible, opacity,
-            reminder, reminder_triggered, window_state, ai, created_at, updated_at, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            reminder, reminder_triggered, window_state, ai, tasks, created_at, updated_at, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            content=VALUES(content), color=VALUES(color), tags=VALUES(tags),
            is_pinned=VALUES(is_pinned), is_visible=VALUES(is_visible), opacity=VALUES(opacity),
            reminder=VALUES(reminder), reminder_triggered=VALUES(reminder_triggered),
-           window_state=VALUES(window_state), ${aiUpdate}, created_at=VALUES(created_at),
+           window_state=VALUES(window_state), ${aiUpdate}, ${tasksUpdate}, created_at=VALUES(created_at),
            updated_at=VALUES(updated_at), deleted_at=VALUES(deleted_at)`,
         [
           syncSpaceId,
@@ -129,6 +138,7 @@ syncRouter.post(
           sticker.reminderTriggered ? 1 : 0,
           sticker.windowState ? JSON.stringify(sticker.windowState) : null,
           aiValue ? JSON.stringify(aiValue) : null,
+          JSON.stringify(tasks),
           new Date(sticker.createdAt),
           new Date(sticker.updatedAt),
           sticker.deletedAt ? new Date(sticker.deletedAt) : null,

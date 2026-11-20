@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import type { Sticker } from '@shared/types';
 import { getCredentials, setCredentials } from '../storage/credentials';
 import { getAllStickersRaw, applyRemoteSticker, getStickerById } from '../storage/db';
+import { reconcileReminders } from '../notifications/reminders';
 
 export interface RedeemResult {
   deviceId: string;
@@ -81,6 +82,7 @@ export async function syncNow(): Promise<{ pulled: number }> {
   }
 
   await setCredentials({ lastSyncedAt: res.serverTime });
+  await reconcileReminders().catch(console.error);
   return { pulled: res.changes.length };
 }
 

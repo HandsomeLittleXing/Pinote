@@ -39,7 +39,7 @@ export function DataSettings() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `电脑便签备份-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.download = `贴记备份-${new Date().toISOString().slice(0, 10)}.json`;
       anchor.click();
       URL.revokeObjectURL(url);
       toast({ title: '已导出数据', variant: 'success' });

@@ -41,7 +41,7 @@ export function AiResultPanel({
 }: AiResultPanelProps) {
   if (!annotation) {
     return (
-      <div className="flex w-[260px] flex-col items-center gap-2 py-4 text-center">
+      <div className="flex w-full min-w-0 flex-col items-center gap-2 py-4 text-center">
         <Sparkles size={20} className="text-ink-subtle" />
         <p className="text-xs text-ink-muted">还没有 AI 整理结果</p>
         <button
@@ -63,10 +63,7 @@ export function AiResultPanel({
   const reminder = annotation.suggestedReminder;
 
   return (
-    <div
-      className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1"
-      style={{ width: 'min(260px, calc(100vw - 48px))' }}
-    >
+    <div className="flex w-full min-w-0 flex-col gap-3 [overflow-wrap:anywhere]">
       {annotation.summary ? (
         <p className="text-[13px] font-medium leading-relaxed text-ink">
           <span className="text-accent">✦ </span>
@@ -110,7 +107,7 @@ export function AiResultPanel({
                   type="button"
                   onClick={() => onAdoptTag(tag)}
                   disabled={!adopted && currentTags.length >= 3}
-                  className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] transition-colors ${
+                  className={`inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] transition-colors ${
                     adopted ? 'border-accent/40 bg-accent/10 text-accent' : 'ai-tag'
                   }`}
                 >

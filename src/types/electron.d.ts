@@ -82,6 +82,12 @@ declare module 'electron' {
     on(event: string, listener: (...args: any[]) => void): void;
   };
 
+  export const safeStorage: {
+    isEncryptionAvailable(): boolean;
+    encryptString(plainText: string): Buffer;
+    decryptString(encrypted: Buffer): string;
+  };
+
   export const globalShortcut: {
     register(accelerator: string, callback: () => void): boolean;
     unregisterAll(): void;

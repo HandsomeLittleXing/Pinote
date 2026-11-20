@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react';
-import { Text, type StyleProp, type TextStyle } from 'react-native';
+import {
+  type StyleProp,
+  type TextStyle,
+} from 'react-native';
+import { Text } from './AppText';
 import { splitAnnotatedText } from '@shared/ai';
 import type { AnnotationSpan } from '@shared/types';
 import { useAppTheme } from '../theme';

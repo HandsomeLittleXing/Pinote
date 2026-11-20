@@ -61,6 +61,7 @@ export class StickerWindowManager {
       minHeight: MIN_EXPANDED_HEIGHT,
       frame: false,
       transparent: true,
+      icon: this.getIconPath(),
       resizable: true,
       skipTaskbar: true,
       alwaysOnTop: sticker.isPinned,
@@ -355,13 +356,18 @@ export class StickerWindowManager {
     });
   }
 
+  /** 获取桌面窗口图标路径 */
+  private getIconPath(): string {
+    return app.isPackaged
+      ? join(process.resourcesPath, 'icon.ico')
+      : join(__dirname, '../../resources/icon.ico');
+  }
+
   /** 面板窗口的标题栏/底色配置 */
   private getPanelWindowOptions() {
     const colors = SKIN_NATIVE_CHROME[this.getEffectiveSkin()][this.getEffectiveTheme()];
     return {
-      icon: app.isPackaged
-        ? join(process.resourcesPath, 'icon.ico')
-        : join(__dirname, '../../resources/icon.ico'),
+      icon: this.getIconPath(),
       titleBarStyle: 'hidden' as const,
       titleBarOverlay: {
         color: colors.overlayColor,
@@ -385,7 +391,7 @@ export class StickerWindowManager {
       height: 680,
       minWidth: 420,
       minHeight: 480,
-      title: '电脑便签 - 便签列表',
+      title: '贴记 - 便签列表',
       ...this.getPanelWindowOptions(),
       autoHideMenuBar: true,
       webPreferences: {
@@ -411,7 +417,7 @@ export class StickerWindowManager {
       height: 640,
       minWidth: 520,
       minHeight: 480,
-      title: '电脑便签 - 设置',
+      title: '贴记 - 设置',
       resizable: true,
       ...this.getPanelWindowOptions(),
       autoHideMenuBar: true,
@@ -433,7 +439,7 @@ export class StickerWindowManager {
     if (stickers.length === 0) {
       // 没有任何便签（含已软删除）时创建欢迎便签
       const welcomeSticker = this.store.createSticker({
-        content: '<p>欢迎使用电脑便签 ✏️</p><p>拖动便签靠近屏幕边缘会自动贴边吸附</p>',
+        content: '<p>欢迎使用贴记 ✏️</p><p>拖动便签靠近屏幕边缘会自动贴边吸附</p>',
       });
       this.createStickerWindow(welcomeSticker);
       return;

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Editor, EditorContent } from '@tiptap/react';
 import {
   ALargeSmall,
@@ -31,6 +31,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
 import { getBackgroundColor, getTextColor, withAlpha, clampOpacity } from '../utils/colors';
 import { resolveGlassCardColor } from '../../shared/palette';
+import { getStickerDoodleForId, STICKER_DOODLES } from '../../shared/stickerDoodles';
 import { getApi } from '../utils/api';
 import { useToast } from './ui/Toast';
 import { AiResultPanel } from './AiResultPanel';
@@ -96,6 +97,7 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [content, setContent] = useState('');
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const pendingPanelRef = useRef<ActivePanel>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const [rewrite, setRewrite] = useState<{ sourceText: string; result: AIRewriteResponse } | null>(null);
@@ -362,9 +364,9 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
     [editor]
   );
 
-  // 菜单关闭后再打开浮层，避免同一次点击被浮层的“点击外部关闭”逻辑吃掉
+  // 等菜单完成关闭后再打开浮层，避免 Radix 的焦点恢复将其立即关闭。
   const openPanel = useCallback((panel: Exclude<ActivePanel, null>) => {
-    window.setTimeout(() => setActivePanel(panel), 0);
+    pendingPanelRef.current = panel;
   }, []);
 
   const toggleCollapsed = useCallback(() => {
@@ -407,7 +409,8 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
   }
 
   const glass = skin === 'glass' ? resolveGlassCardColor(sticker.color, isDark) : null;
-  const bgColor = getBackgroundColor(sticker.color, isDark);
+  const doodle = glass ? STICKER_DOODLES[getStickerDoodleForId(sticker.id)] : null;
+  const bgColor = glass?.surface ?? getBackgroundColor(sticker.color, isDark);
   const txtColor = glass?.ink ?? getTextColor(sticker.color, isDark);
   const bgAlpha = clampOpacity(sticker.opacity);
   const currentFontSize = editor?.getAttributes('textStyle').fontSize as string | undefined;
@@ -624,7 +627,17 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
                   </IconButton>
                 </DropdownMenuTrigger>
               </Tooltip>
-              <DropdownMenuContent align="end" className="max-h-[calc(100vh-40px)] overflow-y-auto">
+              <DropdownMenuContent
+                align="end"
+                className="max-h-[calc(100vh-40px)] overflow-y-auto"
+                onCloseAutoFocus={(event) => {
+                  const panel = pendingPanelRef.current;
+                  if (!panel) return;
+                  event.preventDefault();
+                  pendingPanelRef.current = null;
+                  setActivePanel(panel);
+                }}
+              >
                 <DropdownMenuLabel>外观</DropdownMenuLabel>
                 <DropdownMenuItem onSelect={() => openPanel('color')}>
                   <Palette size={14} /> 换色
@@ -773,6 +786,11 @@ const StickerEditor: React.FC<StickerEditorProps> = ({ stickerId }) => {
       {/* 编辑器区域 */}
       {!collapsed && (
         <div className="sticker-editor flex-1 overflow-y-auto">
+          {doodle && <svg className="sticker-editor-doodle" viewBox={doodle.viewBox}
+            aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="3.8"
+            strokeLinecap="round" strokeLinejoin="round">
+            {doodle.paths.map((path, index) => <path key={index} d={path} />)}
+          </svg>}
           {editor && <EditorContent editor={editor} />}
         </div>
       )}

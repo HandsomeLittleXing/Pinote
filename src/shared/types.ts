@@ -4,6 +4,9 @@ export type SkinId = 'glass' | 'vellum' | 'mote';
 /** 明暗模式 */
 export type ThemeMode = 'system' | 'light' | 'dark';
 
+/** AI 请求来源：设备直连云模型或同步空间服务端 */
+export type AISource = 'device' | 'sync';
+
 /** 语义标注类别 */
 export type AnnotationKind = 'time' | 'place' | 'person' | 'action' | 'important';
 
@@ -43,6 +46,12 @@ export interface AIAnnotation {
   model: string;
 }
 
+export interface StickerTask {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 /** 便签数据模型 */
 export interface Sticker {
   id: string;
@@ -61,6 +70,8 @@ export interface Sticker {
   windowState: WindowState;
   /** AI 整理结果（摘要/标签/语义标注/提醒建议），没整理过为 null */
   ai: AIAnnotation | null;
+  /** 从 AI 建议采纳的可勾选事项 */
+  tasks?: StickerTask[];
 }
 
 /** 窗口位置与尺寸 */
@@ -104,6 +115,8 @@ export interface AppSettings {
   syncEnabled: boolean;
   /** 是否启用 AI 整理（Key 在服务器，客户端只控制是否允许发送文本） */
   aiEnabled: boolean;
+  /** 当前设备的 AI 请求来源；API Key 另行安全存储 */
+  aiSource: AISource;
   /** 已同意的 AI 隐私说明版本；0 表示尚未同意 */
   aiConsentVersion: number;
   /** 在列表卡片显示 AI 摘要 */
@@ -122,6 +135,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
   syncEnabled: false,
   aiEnabled: false,
+  aiSource: 'device',
   aiConsentVersion: 0,
   showAiSummary: true,
   showAiTags: true,
@@ -190,7 +204,7 @@ export interface PairingCodeResult {
 export interface AIStatus {
   configured: boolean;
   model: string;
-  source?: 'space' | 'server' | 'none';
+  source?: 'device' | 'space' | 'server' | 'none';
   keyHint?: string;
 }
 

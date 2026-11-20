@@ -13,6 +13,7 @@ import {
   annotateWithLLM,
   getLLMConfig,
   rewriteWithLLM,
+  searchWithLLM,
   testLLMKey,
 } from '../services/llm';
 import { deleteCredential, getCredentialStatus, getEffectiveKey, saveCredential } from '../services/aiCredentials';
@@ -133,6 +134,21 @@ aiRouter.post('/rewrite', requireAuth, ipLimiter, spaceLimiter, asyncHandler(asy
   try {
     const output = await rewriteWithLLM(plainText, await getEffectiveKey(req.syncSpaceId!));
     res.json({ sourceHash, ...output });
+  } catch (error) { handleAiError(error, res); }
+}));
+
+aiRouter.post('/search', requireAuth, ipLimiter, spaceLimiter, asyncHandler(async (req: AuthedRequest, res) => {
+  const query = typeof req.body?.query === 'string' ? req.body.query.trim() : '';
+  const raw = req.body?.candidates;
+  if (!query || query.length > 120 || !Array.isArray(raw) || raw.length > 80 ||
+      raw.some((item) => typeof item?.id !== 'string' || item.id.length > 100 ||
+        typeof item?.text !== 'string' || item.text.length > 300)) {
+    res.status(400).json({ error: 'invalid_search_request' });
+    return;
+  }
+  try {
+    const ids = await searchWithLLM(query, raw, await getEffectiveKey(req.syncSpaceId!));
+    res.json({ ids });
   } catch (error) { handleAiError(error, res); }
 }));
 

@@ -1,41 +1,41 @@
 /* ==========================================
-   FrostNote - 三套皮肤 × 明暗设计 token
+   贴记 - 三套皮肤 × 明暗设计 token
    所有颜色以 RGB 通道存储，便于 Tailwind 透明度修饰符使用。
-   默认 :root/.dark 是「轻玻 Glass Card」；
+   默认 :root/.dark 是「贴纸 Sticker Paper」；
    html[data-skin='vellum'|'mote'] 覆盖另外两套。
    ========================================== */
 
 :root {
   /* 背景与表面 */
-  --bg: 230 235 241;
-  --bg-subtle: 221 229 235;
-  --surface: 244 247 249;
-  --surface-card: 207 221 228;
-  --surface-muted: 213 225 231;
-  --glass-hi: 255 255 255;
-  --glass-lo: 218 228 234;
+  --bg: 249 248 242;
+  --bg-subtle: 242 238 228;
+  --surface: 255 254 249;
+  --surface-card: 255 252 243;
+  --surface-muted: 247 242 230;
+  --glass-hi: 255 254 249;
+  --glass-lo: 247 242 230;
 
   /* 文字 */
-  --text: 31 43 53;
-  --text-muted: 65 83 96;
-  --text-subtle: 80 97 109;
+  --text: 32 41 32;
+  --text-muted: 65 75 64;
+  --text-subtle: 89 100 88;
 
   /* 线条与主色 */
-  --border: 44 68 80;
-  --accent: 45 96 111;
-  --accent-hover: 36 79 94;
-  --success: 15 157 116;
-  --warning: 178 106 0;
-  --danger: 214 69 69;
+  --border: 40 54 42;
+  --accent: 49 94 61;
+  --accent-hover: 35 75 46;
+  --success: 35 116 74;
+  --warning: 149 96 15;
+  --danger: 169 68 68;
   --on-accent: 255 255 255;
   --on-danger: 255 255 255;
 
   /* 品牌 / 效果色 */
-  --brand-primary: 91 151 163;
-  --brand-secondary: 152 131 166;
-  --brand-tertiary: 128 174 184;
-  --selection: 151 195 203;
-  --caret: 45 96 111;
+  --brand-primary: 121 156 112;
+  --brand-secondary: 215 162 141;
+  --brand-tertiary: 212 193 133;
+  --selection: 189 213 175;
+  --caret: 49 94 61;
 
   /* 语义标注 */
   --ann-time: 14 143 126;
@@ -45,9 +45,9 @@
   --ann-important: 169 97 0;
 
   /* 第一套皮肤的矩形控件共用圆角 */
-  --radius-sm: 20px;
-  --radius-md: 20px;
-  --radius-lg: 20px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 17px;
   --radius-xl: 20px;
 
   /* 动效 */
@@ -57,38 +57,38 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* 阴影 */
-  --shadow-glass: 0 1px 2px rgb(44 68 80 / 0.035), 0 8px 24px rgb(44 68 80 / 0.055);
-  --shadow-float: 0 2px 8px rgb(44 68 80 / 0.045), 0 18px 44px rgb(44 68 80 / 0.085);
+  --shadow-glass: 0 2px 3px rgb(40 54 42 / 0.08), 0 9px 18px rgb(40 54 42 / 0.08);
+  --shadow-float: 0 3px 9px rgb(40 54 42 / 0.08), 0 17px 34px rgb(40 54 42 / 0.13);
   --grain-opacity: 0.018;
 }
 
 .dark {
-  --bg: 29 36 44;
-  --bg-subtle: 34 43 52;
-  --surface: 41 53 64;
-  --surface-card: 46 62 74;
-  --surface-muted: 52 71 82;
-  --glass-hi: 57 72 85;
-  --glass-lo: 34 43 52;
+  --bg: 32 37 31;
+  --bg-subtle: 39 46 38;
+  --surface: 48 55 46;
+  --surface-card: 52 59 50;
+  --surface-muted: 60 68 56;
+  --glass-hi: 68 77 64;
+  --glass-lo: 39 46 38;
 
-  --text: 242 245 247;
-  --text-muted: 185 199 205;
-  --text-subtle: 162 181 190;
+  --text: 247 241 223;
+  --text-muted: 221 216 200;
+  --text-subtle: 184 184 169;
 
-  --border: 242 244 243;
-  --accent: 155 200 208;
-  --accent-hover: 180 217 223;
+  --border: 247 241 223;
+  --accent: 173 208 157;
+  --accent-hover: 194 224 179;
   --success: 95 227 180;
   --warning: 255 209 102;
   --danger: 255 143 159;
-  --on-accent: 21 37 36;
+  --on-accent: 28 42 32;
   --on-danger: 42 13 13;
 
-  --brand-primary: 155 200 208;
-  --brand-secondary: 182 163 195;
-  --brand-tertiary: 129 179 192;
-  --selection: 155 200 208;
-  --caret: 155 200 208;
+  --brand-primary: 173 208 157;
+  --brand-secondary: 201 155 135;
+  --brand-tertiary: 211 192 139;
+  --selection: 173 208 157;
+  --caret: 173 208 157;
 
   --ann-time: 127 227 223;
   --ann-place: 165 180 255;
@@ -112,8 +112,8 @@
   --glass-lo: 248 243 245;
 
   --text: 28 21 25;
-  --text-muted: 110 90 99;
-  --text-subtle: 154 139 146;
+  --text-muted: 87 70 77;
+  --text-subtle: 109 93 100;
 
   --border: 28 21 25;
   --accent: 194 40 104;
@@ -196,8 +196,8 @@
   --glass-lo: 247 242 251;
 
   --text: 36 36 58;
-  --text-muted: 107 106 133;
-  --text-subtle: 150 148 174;
+  --text-muted: 86 84 110;
+  --text-subtle: 107 105 131;
 
   --border: 36 36 58;
   --accent: 79 107 234;

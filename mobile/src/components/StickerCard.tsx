@@ -1,5 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Text } from './AppText';
 import { Bell, Pin } from 'lucide-react-native';
 import { extractSnippet, extractTitle, getChecklistProgress } from '@shared/note';
 import { isAIUsable, noteToPlainText } from '@shared/ai';
@@ -9,6 +14,8 @@ import { GlassSurface } from './GlassSurface';
 import { PaperStack } from './PaperStack';
 import { AnnotatedText } from './AnnotatedText';
 import { useAppTheme, useThemeController } from '../theme';
+import Svg, { Path } from 'react-native-svg';
+import { getStickerDoodleForId, getStickerScatterVariant, STICKER_DOODLES } from '@shared/stickerDoodles';
 import { formatRelativeTime } from '../utils/time';
 
 interface StickerCardProps {
@@ -18,12 +25,23 @@ interface StickerCardProps {
   onLongPress: () => void;
 }
 
+const SCATTER_POSES = [
+  { angle: '-1.6deg', x: -2, y: 0, minHeight: 172, doodleSize: 108 },
+  { angle: '1.7deg', x: 3, y: 7, minHeight: 188, doodleSize: 102 },
+  { angle: '0.9deg', x: 2, y: 3, minHeight: 178, doodleSize: 114 },
+  { angle: '-2deg', x: -3, y: 9, minHeight: 194, doodleSize: 106 },
+  { angle: '-1.1deg', x: -2, y: 5, minHeight: 184, doodleSize: 110 },
+  { angle: '1.4deg', x: 3, y: 1, minHeight: 174, doodleSize: 104 },
+] as const;
+
 /** 列表便签卡片 */
 export function StickerCard({ sticker, variant = 'standard', onPress, onLongPress }: StickerCardProps) {
   const theme = useAppTheme();
   const { preferences } = useThemeController();
   const palette = resolveStickerColor(sticker.color);
   const glass = theme.skin === 'glass' ? resolveGlassCardColor(sticker.color, theme.dark) : null;
+  const doodle = glass ? STICKER_DOODLES[getStickerDoodleForId(sticker.id)] : null;
+  const pose = SCATTER_POSES[getStickerScatterVariant(sticker.id)];
   const featured = glass !== null && variant === 'featured';
   const compact = glass !== null && variant === 'compact';
   const dotColor = glass?.tint ?? (theme.dark ? palette.darkColor : palette.color);
@@ -33,7 +51,11 @@ export function StickerCard({ sticker, variant = 'standard', onPress, onLongPres
   const cardAccent = theme.colors.accent;
   const title = extractTitle(sticker.content);
   const snippet = extractSnippet(sticker.content, title, 90);
-  const progress = getChecklistProgress(sticker.content);
+  const contentProgress = getChecklistProgress(sticker.content);
+  const progress = {
+    total: contentProgress.total + (sticker.tasks?.length ?? 0),
+    done: contentProgress.done + (sticker.tasks?.filter((task) => task.done).length ?? 0),
+  };
   const plainText = noteToPlainText(sticker.content);
   const freshAI = isAIUsable(sticker.ai, plainText) ? sticker.ai : null;
   const spans = freshAI?.spans ?? [];
@@ -53,10 +75,10 @@ export function StickerCard({ sticker, variant = 'standard', onPress, onLongPres
       onLongPress={onLongPress}
       delayLongPress={350}
       style={({ pressed }) => [
-        { opacity: pressed ? 0.92 : 1, flexGrow: compact ? 1 : 0, flexShrink: 0 },
+        { opacity: pressed ? 0.92 : 1, flexShrink: 0 },
       ]}
     >
-      <PaperStack radius={theme.radius.lg} style={compact ? { flex: 1 } : undefined}>
+      <PaperStack radius={theme.radius.lg}>
         <GlassSurface
           blur={false}
           radius={theme.radius.lg}
@@ -64,15 +86,36 @@ export function StickerCard({ sticker, variant = 'standard', onPress, onLongPres
           style={glass ? {
             backgroundColor: glass.surface,
             borderColor: glass.border,
-            borderWidth: 1,
-            minHeight: featured ? (summary || snippet ? 206 : 120) : compact ? 156 : undefined,
-            flex: compact ? 1 : undefined,
+            borderWidth: 1.5,
+            overflow: 'hidden',
+            minHeight: featured ? (summary || snippet ? 206 : 120) : compact ? pose.minHeight : undefined,
+            transform: featured ? [{ rotate: pose.angle }] : compact
+              ? [{ translateX: pose.x }, { translateY: pose.y }, { rotate: pose.angle }]
+              : undefined,
           } : undefined}
           contentStyle={{
             padding: compact ? 12 : featured ? 18 : theme.spacing.lg,
+            minHeight: compact ? pose.minHeight - 24 : undefined,
             flex: featured || compact ? 1 : undefined,
           }}
         >
+        {doodle && (
+          <View pointerEvents="none" accessible={false} style={{
+            position: 'absolute',
+            right: featured ? 8 : 2,
+            bottom: featured ? -8 : 2,
+            width: featured ? 155 : pose.doodleSize,
+            height: featured ? 155 : pose.doodleSize,
+            opacity: theme.dark ? 0.17 : 0.16,
+          }}>
+            <Svg width="100%" height="100%" viewBox={doodle.viewBox} fill="none">
+              {doodle.paths.map((path, index) => (
+                <Path key={index} d={path} stroke={cardInk} strokeWidth={3.8}
+                  strokeLinecap="round" strokeLinejoin="round" />
+              ))}
+            </Svg>
+          </View>
+        )}
         <View style={{ flexDirection: 'row', alignItems: featured || compact ? 'flex-start' : 'center', gap: 8 }}>
           <View
             style={{
@@ -96,7 +139,7 @@ export function StickerCard({ sticker, variant = 'standard', onPress, onLongPres
             }}
           />
           {sticker.isPinned ? <Pin size={14} color={cardAccent} /> : null}
-          {sticker.reminder && !sticker.reminderTriggered ? (
+          {sticker.reminder && !sticker.reminderTriggered && Date.parse(sticker.reminder) > Date.now() ? (
             <Bell size={14} color={theme.colors.warning} />
           ) : null}
           {!featured && !compact ? (

@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow, Menu, nativeTheme, app } from 'electron';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { IPC } from '../shared/ipc-channels';
 import type {
   AIAnnotateRequest,
@@ -16,11 +16,43 @@ import type { ReminderScheduler } from './reminders';
 import type { ShortcutManager } from './shortcuts';
 import type { TrayManager } from './tray';
 import type { SyncManager } from './sync';
+import { DeviceAI } from './device-ai';
 
 type BroadcastFn = (channel: string, ...args: unknown[]) => void;
 
+const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+
+function removeRunValue(name: string): void {
+  try {
+    execFileSync('reg.exe', ['query', RUN_KEY, '/v', name], { stdio: 'ignore' });
+  } catch {
+    return;
+  }
+  execFileSync('reg.exe', ['delete', RUN_KEY, '/v', name, '/f'], { stdio: 'ignore' });
+}
+
+/** 同步开机启动项，并清理旧品牌的启动项。 */
+export function syncAutoStart(enabled: boolean): void {
+  try {
+    if (enabled) {
+      const appPath = app.isPackaged ? app.getPath('exe') : process.execPath;
+      execFileSync(
+        'reg.exe',
+        ['add', RUN_KEY, '/v', 'Pinote', '/t', 'REG_SZ', '/d', `"${appPath}" --autostart`, '/f'],
+        { stdio: 'ignore' }
+      );
+    } else {
+      removeRunValue('Pinote');
+    }
+    removeRunValue('StickerNote');
+  } catch (error) {
+    console.error('同步贴记开机启动项失败:', error);
+  }
+}
+
 /** IPC 事件处理器注册中心 */
 export class IpcHandlerRegistry {
+  private deviceAI = new DeviceAI();
   private store: StickerStore;
   private windowManager: StickerWindowManager;
   private reminderScheduler: ReminderScheduler;
@@ -255,6 +287,9 @@ export class IpcHandlerRegistry {
     ipcMain.handle(IPC.SETTINGS_SET, async (_event: any, settings: any) => {
       const oldSettings = this.store.getSettings();
       const mergedSettings: AppSettings = { ...oldSettings, ...settings };
+      if (mergedSettings.aiSource === 'sync' && !this.syncManager.getStatus().linked) {
+        throw new Error('请先连接同步服务，再选择同步空间 AI');
+      }
 
       // 同步开关先于设置落库执行：开启失败（地址为空/注册失败）时中止保存，避免部分生效
       if (typeof settings.syncEnabled === 'boolean') {
@@ -294,19 +329,7 @@ export class IpcHandlerRegistry {
 
       // 开机自启动（写注册表，用安装目录路径）
       if (oldSettings.autoStart !== newSettings.autoStart) {
-        const appPath = app.isPackaged ? app.getPath('exe') : process.execPath;
-        const regPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
-        try {
-          if (newSettings.autoStart) {
-            const cmd = `powershell -NoProfile -Command "Set-ItemProperty -Path '${regPath}' -Name 'StickerNote' -Value '\"${appPath}\" --autostart' -Force"`;
-            execSync(cmd, { stdio: 'ignore' });
-          } else {
-            const cmd = `powershell -NoProfile -Command "Remove-ItemProperty -Path '${regPath}' -Name 'StickerNote' -ErrorAction SilentlyContinue"`;
-            execSync(cmd, { stdio: 'ignore' });
-          }
-        } catch (err) {
-          console.error('设置开机自启动失败:', err);
-        }
+        syncAutoStart(newSettings.autoStart);
       }
 
       this.trayManager.updateContextMenu();
@@ -380,20 +403,27 @@ export class IpcHandlerRegistry {
     });
 
     ipcMain.handle(IPC.AI_GET_STATUS, async () => {
-      return this.syncManager.getAiStatus();
+      return this.store.getSettings().aiSource === 'device'
+        ? this.deviceAI.getStatus()
+        : this.syncManager.getAiStatus();
     });
 
     ipcMain.handle(IPC.AI_SAVE_KEY, async (_event: any, apiKey: string) => {
       if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey.length > 512) throw new Error('请输入有效的 API Key');
-      return this.syncManager.saveAiKey(apiKey);
+      return this.store.getSettings().aiSource === 'device'
+        ? this.deviceAI.saveKey(apiKey)
+        : this.syncManager.saveAiKey(apiKey);
     });
-    ipcMain.handle(IPC.AI_TEST_KEY, async () => this.syncManager.testAiKey());
-    ipcMain.handle(IPC.AI_DELETE_KEY, async () => this.syncManager.deleteAiKey());
+    ipcMain.handle(IPC.AI_TEST_KEY, async () => this.store.getSettings().aiSource === 'device'
+      ? this.deviceAI.testKey() : this.syncManager.testAiKey());
+    ipcMain.handle(IPC.AI_DELETE_KEY, async () => this.store.getSettings().aiSource === 'device'
+      ? this.deviceAI.deleteKey() : this.syncManager.deleteAiKey());
     ipcMain.handle(IPC.AI_REWRITE, async (_event: any, request: AIRewriteRequest) => {
       if (!this.store.getSettings().aiEnabled) throw new Error('请先开启 AI 整理');
       if (!request || typeof request.plainText !== 'string' || request.plainText.length > 8000 ||
           typeof request.contentHash !== 'string') throw new Error('便签内容无效或过长');
-      return this.syncManager.rewrite(request);
+      return this.store.getSettings().aiSource === 'device'
+        ? this.deviceAI.rewrite(request) : this.syncManager.rewrite(request);
     });
 
     ipcMain.handle(IPC.AI_ANNOTATE, async (_event: any, request: AIAnnotateRequest) => {
@@ -401,7 +431,8 @@ export class IpcHandlerRegistry {
       if (!settings.aiEnabled) {
         throw new Error('请在设置 → 同步 → AI 整理中开启该功能');
       }
-      return this.syncManager.annotate(request);
+      return settings.aiSource === 'device'
+        ? this.deviceAI.annotate(request) : this.syncManager.annotate(request);
     });
   }
 }

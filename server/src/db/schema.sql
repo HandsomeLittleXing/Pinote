@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS `stickers` (
   `window_state` JSON NULL,
   -- AI 整理结果（摘要/标签/语义标注/提醒建议）；与正文分开存储，旧客户端缺省为 NULL
   `ai` JSON NULL,
+  `tasks` JSON NULL,
   `created_at` DATETIME(3) NOT NULL,
   `updated_at` DATETIME(3) NOT NULL,
   `deleted_at` DATETIME(3) NULL,

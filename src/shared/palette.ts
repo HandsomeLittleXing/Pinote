@@ -111,23 +111,34 @@ export interface GlassCardColor {
 }
 
 const GLASS_TINTS: Record<string, string> = {
-  ice: '#7798B5',
-  lake: '#6C9FA5',
-  mint: '#81A99A',
-  rose: '#BC8FA0',
-  sage: '#A4AD87',
-  lilac: '#9A91B5',
-  frost: '#CFD5DA',
-  cloud: '#8A939B',
+  ice: '#708C71',
+  lake: '#79A5A3',
+  mint: '#7FA181',
+  rose: '#C88774',
+  sage: '#9BA370',
+  lilac: '#A493BF',
+  frost: '#B5A77B',
+  cloud: '#8B9FB5',
 };
 
-/** 便签色仅用于小面积标识，正文表面保持中性。 */
+const STICKER_PAPER_LIGHT: Record<string, string> = {
+  ice: '#E9E2BB', lake: '#DFECEA', mint: '#DEEBE3', rose: '#F3DFD3',
+  sage: '#EDE9CF', lilac: '#EEE9F3', frost: '#FFFDF6', cloud: '#E3E8F1',
+};
+
+const STICKER_PAPER_DARK: Record<string, string> = {
+  ice: '#354236', lake: '#304345', mint: '#334538', rose: '#493B38',
+  sage: '#464535', lilac: '#3E3A49', frost: '#343831', cloud: '#3A3D39',
+};
+
+/** 第一套皮肤按便签颜色选取纸张色，正文保持深墨对比度。 */
 export function resolveGlassCardColor(color: StickerColor, dark: boolean): GlassCardColor {
-  const tint = GLASS_TINTS[resolveStickerColor(color).key];
+  const key = resolveStickerColor(color).key;
+  const tint = GLASS_TINTS[key];
   return {
     tint,
-    surface: dark ? '#292D31' : '#F9FAFA',
-    ink: dark ? '#F2F4F3' : '#20282A',
-    border: dark ? '#FFFFFF1F' : '#20303414',
+    surface: dark ? STICKER_PAPER_DARK[key] : STICKER_PAPER_LIGHT[key],
+    ink: dark ? '#F7F1DF' : '#26352A',
+    border: dark ? '#F5EFD445' : '#46574352',
   };
 }

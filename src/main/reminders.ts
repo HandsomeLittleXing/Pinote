@@ -68,7 +68,7 @@ export class ReminderScheduler {
   sendNotification(sticker: Sticker): void {
     if (!Notification.isSupported()) return;
 
-    const title = 'StickerNote 提醒';
+    const title = '贴记提醒';
     // 提取纯文本标题（取内容前 20 字）
     const plainText = sticker.content
       .replace(/<[^>]*>/g, '')

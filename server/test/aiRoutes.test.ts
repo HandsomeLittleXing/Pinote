@@ -74,6 +74,15 @@ test('AI routes authenticate, save key status, rewrite and remove', async () => 
     const output = await rewritten.json() as { sourceHash: string; organizedBlocks: unknown[] };
     assert.equal(output.sourceHash, computeContentHash(plainText));
     assert.equal(output.organizedBlocks.length, 1);
+    const search = await fetch(`${base}/search`, { method: 'POST', headers: auth,
+      body: JSON.stringify({ query: '发布', candidates: [
+        { id: 'note-a', text: '检查发布清单' }, { id: 'note-b', text: '购买咖啡' },
+      ] }) });
+    assert.equal(search.status, 200);
+    assert.deepEqual((await search.json() as { ids: string[] }).ids, ['note-a']);
+    const invalidSearch = await fetch(`${base}/search`, { method: 'POST', headers: auth,
+      body: JSON.stringify({ query: '发布', candidates: [{ id: 'note-a', text: 'x'.repeat(301) }] }) });
+    assert.equal(invalidSearch.status, 400);
     assert.equal((await fetch(`${base}/key`, { method: 'DELETE', headers: auth })).status, 200);
     assert.equal(row, undefined);
     process.env.LLM_API_KEY = 'server-default';

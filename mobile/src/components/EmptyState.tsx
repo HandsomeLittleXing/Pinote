@@ -1,5 +1,8 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import {
+  View,
+} from 'react-native';
+import { Text } from './AppText';
 import { useAppTheme } from '../theme';
 import { GlassSurface } from './GlassSurface';
 

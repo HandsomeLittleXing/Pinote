@@ -4,6 +4,7 @@ import { BlurTargetView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../theme';
 import { GrainOverlay } from './GrainOverlay';
+import { StickerDoodles } from './StickerDoodles';
 
 type BlurTargetRef = React.RefObject<ComponentRef<typeof View> | null>;
 
@@ -27,6 +28,7 @@ export function ScreenBackground({ children }: { children: React.ReactNode }) {
           end={{ x: 0.9, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
+        {theme.skin === 'glass' ? <StickerDoodles /> : null}
         {theme.skin !== 'glass' ? (
           <>
             <View style={[styles.blob, styles.blobA, { backgroundColor: theme.colors.blobA }]} />

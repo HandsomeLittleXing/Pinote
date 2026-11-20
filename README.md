@@ -1,4 +1,6 @@
-# ❄️ FrostNote · 霜笺
+# 📓 贴记 · Pinote
+
+当前项目作者：handsomelittlexing。
 
 > 三套皮肤的跨端便签：桌面常驻、手机随手记、多端同步，还能用 AI 整理并补充内容。
 
@@ -15,9 +17,45 @@
 
 ---
 
+## 应用图标
+
+桌面端与手机端的图标均由 handsomelittlexing 设计，分别使用纸团笑脸与笔记本笑脸。
+
+| Windows 桌面端 | Android 手机端 |
+| --- | --- |
+| <img src="resources/icon.png" alt="桌面端纸团笑脸图标" width="180" /> | <img src="mobile/assets/icon.png" alt="手机端笔记本笑脸图标" width="180" /> |
+
+---
+
+## 界面截图
+
+以下截图来自 Windows 桌面端，展示贴记当前的实际界面。
+
+### 便签列表与三种皮肤
+
+| 贴纸：错落纸片与手绘插画 | 硫酸纸：柔和的半透明层次 | 小墨：圆润的浅紫卡片 |
+| --- | --- | --- |
+| <img src="docs/system-image/Snipaste_2026-11-20_17-33-03.png" alt="贴纸皮肤的便签列表" width="260" /> | <img src="docs/system-image/Snipaste_2026-11-20_18-12-47.png" alt="硫酸纸皮肤的便签列表" width="260" /> | <img src="docs/system-image/Snipaste_2026-11-20_18-12-56.png" alt="小墨皮肤的便签列表" width="260" /> |
+
+列表支持搜索、标签筛选和按最近更新排序。打开便签后，可以把它留在桌面上，拖动、缩放或置顶；三种皮肤均可切换明暗模式。
+
+### 编辑便签与 AI 整理
+
+| 在便签中编辑并查看 AI 标注 | 查看摘要、标签和提醒建议 |
+| --- | --- |
+| <img src="docs/system-image/Snipaste_2026-11-20_18-07-49.png" alt="桌面便签编辑与彩色 AI 标注" width="430" /> | <img src="docs/system-image/Snipaste_2026-11-20_18-08-02.png" alt="AI 分析结果浮层" width="430" /> |
+
+AI 可以标出时间、人物和重点句，并给出标签与提醒建议。整理并补充会先展示预览，由你选择是否应用到正文。
+
+| AI 整理后的预览 | 外观设置 |
+| --- | --- |
+| <img src="docs/system-image/Snipaste_2026-11-20_18-10-13.png" alt="AI 整理后的长便签预览" width="430" /> | <img src="docs/system-image/Snipaste_2026-11-20_18-13-22.png" alt="可切换三种皮肤和便签颜色的外观设置" width="430" /> |
+
+---
+
 ## 这是什么
 
-FrostNote 是一套**私人便签系统**，由三个部分组成：
+贴记（Pinote）是一套**私人便签系统**，由三个部分组成：
 
 | 部分 | 形态 | 职责 |
 |------|------|------|
@@ -31,13 +69,13 @@ FrostNote 是一套**私人便签系统**，由三个部分组成：
 
 | 皮肤 | 视觉语言 |
 |------|----------|
-| **彩玻 Glass Card** | 中性网格底、彩色磨砂便签、柔和白边与清晰文字 |
+| **贴纸 Sticker Paper** | 奶油白纸底、深墨手写字、浅彩纸片与原创拙趣简笔画 |
 | **硫酸纸 Vellum** | 雾白或近黑底、叠层半透明纸、玫红/薄荷墨色、细噪点 |
 | **小墨 Mote** | 奶油紫底、圆润卡片、会眨眼和看向你的珠光墨团 |
 
 AI 标注会把便签里的**时间 / 地点 / 人物 / 事项 / 重点句**非破坏性地标出来，不改正文。独立的「AI 整理并补充」可预览整理稿、逐条选择补充建议；只有点击应用才替换正文，并可在当前编辑会话撤销一次。
 
-> 项目内部沿用历史标识：`sticker-note`、`StickerNote`、`com.stickernote.*`、安装包名「电脑便签」。
+> 项目内部沿用历史标识：`sticker-note`、`com.stickernote.*`，以兼容已有数据和升级安装。
 
 ---
 
@@ -59,7 +97,7 @@ AI 标注会把便签里的**时间 / 地点 / 人物 / 事项 / 重点句**非�
 | 🚀 开机自启 | 写入注册表，开机自动显示 |
 | 🔕 系统托盘 | 关闭窗口不退出；托盘菜单快速新建 / 打开列表 / 退出 |
 | 🌙 深色模式 | 跟随系统 / 浅色 / 深色 |
-| 🎨 三套皮肤 | 彩玻 / 硫酸纸 / 小墨，每套都有明暗两态 |
+| 🎨 三套皮肤 | 贴纸 / 硫酸纸 / 小墨，每套都有明暗两态 |
 | ✦ AI 标注与整理 | 标注生成摘要、少量标签和提醒建议；整理补充可预览并选择后改正文 |
 | 💾 导入导出 | JSON 备份与恢复 |
 
@@ -71,6 +109,10 @@ AI 标注会把便签里的**时间 / 地点 / 人物 / 事项 / 重点句**非�
 - ✦ AI 标注：摘要、标签、注解预览、提醒建议；AI 整理并补充需预览确认后才改正文
 - 扫码或输入配对码完成配对，无需登录
 - SQLite 本地缓存，离线可读可写
+
+- 手机系统通知提醒：可在便签管理中设置、修改或取消；点击通知直达便签
+- 列表长按管理置顶、标签和提醒，最近删除可恢复
+- AI 待办可逐条加入便签清单并勾选；搜索框可手动发起语义查找（最近 80 条）
 
 ### 多端同步
 
@@ -111,13 +153,25 @@ AI 标注会把便签里的**时间 / 地点 / 人物 / 事项 / 重点句**非�
 | 桌面 UI | React 18 · TypeScript · Tailwind CSS · Radix UI · lucide-react |
 | 富文本 | Tiptap（桌面）· react-native-pell-rich-editor（手机） |
 | 手机端 | Expo SDK 58 · React Native 0.88 · React Navigation · expo-blur · expo-sqlite |
-| AI | DeepSeek（OpenAI 兼容接口），服务端代理，Key 不入客户端 |
+| AI | DeepSeek（OpenAI 兼容接口）；单端设备直连，互通模式由服务器代理 |
 | 同步后端 | Node.js 20 · Express · MySQL 8 · tsx |
 | 部署 | Nginx / systemd 或 Docker，详见 [部署指南](docs/DEPLOYMENT.md) |
 
 ---
 
 ## 快速开始
+
+### 三种使用模式
+
+| 模式 | 需要安装 | 便签保存与同步 | 如需使用 AI |
+| --- | --- | --- | --- |
+| **仅电脑** | Windows 桌面端 | 保存在电脑本地；无需部署服务器或配对 | 设置 → AI →「本机直连」，填入自己的 DeepSeek Key |
+| **仅手机** | Android 手机端 | 保存在手机本地；无需部署服务器或配对 | 手机设置 → AI →「本机直连」，填入自己的 DeepSeek Key |
+| **手机电脑互通** | 两端应用 + 自建同步后端 | 两端本地读写，配对后经服务器增量同步 | 两端可选「同步空间」并共用空间 Key，也可各自选「本机直连」 |
+
+单端模式安装后即可记便签；AI 是可选功能。想互通时，在电脑的「手机同步」设置中填写服务器地址并开启同步，再用手机扫描二维码或输入配对码。服务器地址由使用者自行配置，项目没有预置个人同步服务器。
+
+「本机直连」指设备通过网络直接请求 DeepSeek，并非离线运行模型。只有手动触发 AI 时才发送所需的便签纯文本；本机 Key 留在当前设备，同步空间 Key 由自建服务器保存。项目源码与发行包不包含开发者 API Key。
 
 ### 环境要求
 
@@ -134,7 +188,7 @@ npm run typecheck  # 类型检查
 npm run build      # 打包 NSIS 安装包 -> release/
 ```
 
-未签名的安装包位于 `release/电脑便签-Setup-<version>.exe`。
+未签名的安装包位于 `release/贴记-Setup-<version>.exe`。
 
 ### 同步后端
 
@@ -143,11 +197,11 @@ cd server
 cp .env.example .env   # 填写 DB_HOST / DB_USER / DB_PASSWORD 等
 npm install
 npm run db:init        # 创建数据库与表结构
-npm run db:migrate     # 已有数据库：补 ai 列（幂等）
+npm run db:migrate     # 已有数据库：补 ai、tasks 列（幂等）
 npm run dev            # http://localhost:4000，健康检查 /health
 ```
 
-AI Key 可在已配对的桌面或手机设置页填写，同一同步空间共用；服务器需要 `AI_CREDENTIALS_MASTER_KEY` 加密保存，Key 配置入口需要 HTTPS（直连 localhost 开发例外）。旧 `LLM_API_KEY` 仍可作为服务器默认 Key。没有 Key 时可设 `AI_MOCK=1` 本地联调；生产环境不要开启 Mock。
+互通模式的 AI Key 可在已配对的桌面或手机设置页填写，同一同步空间共用；服务器需要 `AI_CREDENTIALS_MASTER_KEY` 加密保存，Key 配置入口需要 HTTPS（直连 localhost 开发例外）。旧 `LLM_API_KEY` 仍可作为服务器默认 Key。没有 Key 时可设 `AI_MOCK=1` 本地联调；生产环境不要开启 Mock。
 
 生产部署（ECS、systemd、HTTPS、升级回滚）见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) 与 [server/deploy/README.md](server/deploy/README.md)。
 
@@ -198,7 +252,8 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 - 手机数据保存在 SQLite + AsyncStorage
 - 服务端仅保存 token 哈希，不保存明文凭据；配对码短时有效且单次使用
 - 后端是个人自建服务，除配对与同步接口外不采集任何数据
-- **AI 整理只在手动触发时**把当前便签的纯文本通过你的同步服务器发给配置的模型（默认 DeepSeek）；不会自动分析，不发送图片。AI 结果会随便签同步到已配对设备
+- **AI 整理只在手动触发时**发送当前便签纯文本：设备来源直接发给 DeepSeek，互通来源经同步服务器发给配置的模型。手机语义查找也只在手动触发时发送最近最多 80 条便签各最多 300 字的纯文本。不会自动分析，不发送图片。AI 结果作为便签字段可随便签同步
+- 设备 Key 仅保存在当前设备的系统安全存储中，不进入备份和同步；卸载手机应用后需要重新填写
 - 服务器日志只记录 AI 请求的字数、耗时与状态，不记录便签正文
 
 ---
@@ -236,10 +291,9 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 
 ## 文档
 
-- [产品需求 (PRD)](docs/PRD.md)
-- [系统架构](docs/ARCHITECTURE.md)
 - [同步与移动端架构](docs/SYNC-ARCHITECTURE.md)
 - [部署指南](docs/DEPLOYMENT.md)
+- [打包指南](docs/PACKAGING.md)
 - [UI 改版方案](docs/UI-REDESIGN-PLAN.md)
 - 分阶段设计与实现记录：[docs/design](docs/design) · [docs/implementation](docs/implementation)
 - [Phase 4：三皮肤 + AI 标注（含已移除的语音功能记录）](docs/implementation/2026-10-26-phase4-themes-ai-voice-implementation.md)
@@ -253,7 +307,7 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 - 同步为单用户同步空间，无账号与权限体系
 - 冲突策略为最后写入优先，不合并同一便签的并发编辑
 - 列表卡片使用预合成不透明底色（Android「半透明 + elevation」渲染瑕疵的规避方案）
-- AI 整理需要已配对同步服务与有效 Key；可在桌面或手机设置，同一同步空间共享；没有网络时不调用
+- AI 整理需要网络和有效 Key：单端模式使用本机直连；互通模式可选择同步空间 Key。没有网络时不调用
 - AI 结果是原文的精确子串匹配，正文改动后旧结果会自动隐藏，需要重新整理
 - AI 与正文共用 `updatedAt` 做最后写入优先；冲突时以较新的正文为准，AI 可重新生成
 
@@ -262,3 +316,5 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 ## License
 
 [MIT](LICENSE)
+
+界面字体使用[莲生灵光体](https://github.com/kim-wing/liansheng-lingguangti) 2.2.11（作者：莲生）。字体依其 Arphic Public License 分发；原始字体、授权条款及上游声明见 [resources/fonts](resources/fonts)。项目代码的 MIT 许可不覆盖该字体。

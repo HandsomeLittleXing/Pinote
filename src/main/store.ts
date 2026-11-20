@@ -5,6 +5,7 @@ import { DEFAULT_SETTINGS } from '../shared/types';
 import { normalizeAIAnnotation } from '../shared/ai';
 import { normalizeStickerColor } from '../shared/palette';
 import { normalizeSkinId } from '../shared/skins';
+import { resolveAiSource } from '../shared/aiSource';
 
 interface StoreSchema {
   stickers: Sticker[];
@@ -16,6 +17,7 @@ function normalizeSticker(sticker: Sticker): Sticker {
   return {
     ...sticker,
     ai: normalizeAIAnnotation((sticker as Partial<Sticker>).ai),
+    tasks: Array.isArray(sticker.tasks) ? sticker.tasks : [],
   };
 }
 
@@ -81,6 +83,7 @@ export class StickerStore {
         height: 200,
       },
       ai: normalizeAIAnnotation(partial?.ai),
+      tasks: partial?.tasks ?? [],
     };
 
     stickers.push(sticker);
@@ -154,7 +157,13 @@ export class StickerStore {
     const stored = this.store.get('settings') as Partial<AppSettings> | undefined;
     const merged = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
     merged.skin = normalizeSkinId(merged.skin);
+    merged.aiSource = resolveAiSource(merged.aiSource, merged.aiEnabled, false);
     return merged;
+  }
+
+  hasStoredAiSource(): boolean {
+    const stored = this.store.get('settings') as Partial<AppSettings> | undefined;
+    return stored?.aiSource === 'device' || stored?.aiSource === 'sync';
   }
 
   /** 更新全局设置 */
@@ -162,6 +171,7 @@ export class StickerStore {
     const current = this.getSettings();
     const updated = { ...current, ...settings };
     updated.skin = normalizeSkinId(updated.skin);
+    updated.aiSource = resolveAiSource(updated.aiSource, updated.aiEnabled, false);
     this.store.set('settings', updated);
   }
 
@@ -186,6 +196,11 @@ export class StickerStore {
       if (data.settings) {
         const merged = { ...DEFAULT_SETTINGS, ...data.settings };
         merged.skin = normalizeSkinId(merged.skin);
+        merged.aiSource = resolveAiSource(
+          data.settings.aiSource,
+          merged.aiEnabled,
+          this.getSettings().aiSource === 'sync'
+        );
         this.store.set('settings', merged);
       }
     } else {

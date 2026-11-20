@@ -5,7 +5,8 @@ import type { StickerWindowManager } from './windows';
 
 /** 系统托盘管理器 */
 export class TrayManager {
-  private tray: any = null;
+  private tray: Tray | null = null;
+  private creating: Promise<boolean> | null = null;
   private store: StickerStore;
   private windowManager: StickerWindowManager;
 
@@ -15,18 +16,40 @@ export class TrayManager {
   }
 
   /** 创建系统托盘 */
-  createTray(): void {
-    const iconPath = this.getIconPath();
-    const icon = nativeImage.createFromPath(iconPath);
+  createTray(): Promise<boolean> {
+    if (this.tray) return Promise.resolve(true);
+    if (this.creating) return this.creating;
+    this.creating = this.createTrayOnce().finally(() => {
+      this.creating = null;
+    });
+    return this.creating;
+  }
 
-    // 打包后确保图标有效
+  private async createTrayOnce(): Promise<boolean> {
+    const iconPath = this.getIconPath();
+    let icon = nativeImage.createFromPath(iconPath);
+
     if (icon.isEmpty()) {
-      console.error('托盘图标加载失败，路径:', iconPath);
-      return;
+      console.error('托盘资源图标加载失败，尝试使用程序图标:', iconPath);
+      try {
+        icon = await app.getFileIcon(app.getPath('exe'), { size: 'small' });
+      } catch (error) {
+        console.error('托盘程序图标加载失败:', error);
+      }
     }
 
-    this.tray = new Tray(icon.resize({ width: 16, height: 16 }));
-    this.tray.setToolTip('电脑便签 - 随手一贴');
+    if (icon.isEmpty()) {
+      console.error('托盘创建失败：没有可用图标');
+      return false;
+    }
+
+    try {
+      this.tray = new Tray(icon.resize({ width: 16, height: 16 }));
+    } catch (error) {
+      console.error('托盘创建失败:', error);
+      return false;
+    }
+    this.tray.setToolTip('贴记 - 随手一贴');
 
     this.updateContextMenu();
 
@@ -40,6 +63,7 @@ export class TrayManager {
       const sticker = this.store.createSticker();
       this.windowManager.createStickerWindow(sticker);
     });
+    return true;
   }
 
   /** 更新右键菜单 */
@@ -111,8 +135,8 @@ export class TrayManager {
           const { dialog } = require('electron');
           dialog.showMessageBox({
             type: 'info',
-            title: '关于电脑便签',
-            message: `电脑便签 v${app.getVersion()}`,
+            title: '关于贴记',
+            message: `贴记 v${app.getVersion()}`,
             detail: '开机即在，随手一贴\n\n快捷键：\n  Ctrl+Alt+N - 新建便签\n  Ctrl+Alt+S - 打开列表\n\n右键托盘图标查看更多选项',
           });
         },

@@ -19,6 +19,7 @@ import { AnnotatedText } from './AnnotatedText';
 import type { Sticker } from '../../shared/types';
 import type { SkinId } from '../../shared/types';
 import { resolveGlassCardColor } from '../../shared/palette';
+import { getStickerDoodleForId, getStickerScatterVariant, STICKER_DOODLES } from '../../shared/stickerDoodles';
 
 dayjs.extend(relativeTime);
 dayjs.locale('zh-cn');
@@ -85,6 +86,8 @@ export const StickerListItem: React.FC<StickerListItemProps> = ({
   const timeAgo = dayjs(sticker.updatedAt).fromNow();
   const color = getBackgroundColor(sticker.color, isDark);
   const glass = skin === 'glass' ? resolveGlassCardColor(sticker.color, isDark) : null;
+  const doodle = glass ? STICKER_DOODLES[getStickerDoodleForId(sticker.id)] : null;
+  const scatter = glass ? getStickerScatterVariant(sticker.id) : undefined;
   const featured = glass !== null && variant === 'featured';
   const compact = glass !== null && variant === 'compact';
   const freshAI = isAIUsable(sticker.ai, noteToPlainText(sticker.content))
@@ -104,6 +107,7 @@ export const StickerListItem: React.FC<StickerListItemProps> = ({
     <div className="sticker-list-card min-w-0">
       <article
         role="button"
+        data-scatter={scatter}
         tabIndex={0}
         aria-label={`打开便签：${title}`}
         onClick={() => onFocus(sticker.id)}
@@ -118,8 +122,13 @@ export const StickerListItem: React.FC<StickerListItemProps> = ({
           }
         }}
         className={`group relative flex h-full cursor-pointer flex-col gap-2.5 rounded-xl border border-line/10 bg-surface p-3.5 text-left transition-all duration-200 hover:-translate-y-px hover:shadow-glass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 ${glass ? 'glass-note-card' : ''} ${featured ? 'glass-note-card--featured' : ''} ${compact ? 'glass-note-card--compact' : ''}`}
-        style={glass ? { color: featured ? undefined : glass.ink, '--note-tint': glass.tint } as React.CSSProperties : undefined}
+        style={glass ? { color: glass.ink, '--note-tint': glass.tint, '--note-surface': glass.surface } as React.CSSProperties : undefined}
       >
+      {doodle && <svg className="sticker-card-doodle" viewBox={doodle.viewBox}
+        aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="3.8"
+        strokeLinecap="round" strokeLinejoin="round">
+        {doodle.paths.map((path, index) => <path key={index} d={path} />)}
+      </svg>}
       <div className="flex items-start gap-2">
         <span
           className="mt-1 h-2 w-2 shrink-0 rounded-full shadow-sm"

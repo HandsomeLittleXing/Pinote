@@ -13,11 +13,6 @@ const themeOptions = [
   { value: 'dark' as const, label: '深色', Icon: Moon },
 ];
 
-const desktopGlassSwatches = {
-  light: ['#E6EBF1', '#CFDDE4', '#5B97A3', '#9883A6'],
-  dark: ['#1D242C', '#2E3E4A', '#9BC8D0', '#B6A3C3'],
-};
-
 interface AppearanceSettingsProps {
   settings: AppSettings;
   update: (patch: Partial<AppSettings>) => Promise<void>;
@@ -61,9 +56,7 @@ export function AppearanceSettings({ settings, update }: AppearanceSettingsProps
         <div className="grid grid-cols-3 gap-2">
           {SKIN_DEFINITIONS.map((definition) => {
             const active = settings.skin === definition.id;
-            const swatches = definition.id === 'glass'
-              ? desktopGlassSwatches[isDark ? 'dark' : 'light']
-              : definition.swatches[isDark ? 'dark' : 'light'];
+            const swatches = definition.swatches[isDark ? 'dark' : 'light'];
             return (
               <button
                 key={definition.id}

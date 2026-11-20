@@ -34,23 +34,23 @@ export function GlassSurface({
 }: GlassSurfaceProps) {
   const theme = useAppTheme();
   const targetRef = useContext(BlurTargetContext);
-  const useBlur =
-    blur && !(theme.skin === 'glass' && Platform.OS === 'android' && Number(Platform.Version) < 31);
-  const isLightGlass = theme.skin === 'glass';
+  const isStickerSkin = theme.skin === 'glass';
+  const useBlur = blur && !isStickerSkin;
 
   return (
     <View
       style={[
         styles.base,
         {
-          borderRadius: isLightGlass && radius !== 0 && radius !== 999 ? theme.radius.md : radius,
+          borderRadius: isStickerSkin && radius !== 0 && radius !== 999 ? theme.radius.md : radius,
+          borderWidth: isStickerSkin ? 1 : StyleSheet.hairlineWidth,
           borderColor: theme.colors.border,
           backgroundColor: useBlur ? 'transparent' : theme.colors.surfaceCard,
           shadowColor: theme.colors.shadow,
-          shadowOpacity: isLightGlass ? (theme.dark ? 0.1 : 0.04) : 0.1,
-          shadowRadius: isLightGlass ? 12 : 18,
-          shadowOffset: { width: 0, height: isLightGlass ? 4 : 8 },
-          elevation: isLightGlass ? 1 : 4,
+          shadowOpacity: isStickerSkin ? (theme.dark ? 0.18 : 0.1) : 0.1,
+          shadowRadius: isStickerSkin ? 7 : 18,
+          shadowOffset: { width: 0, height: isStickerSkin ? 3 : 8 },
+          elevation: isStickerSkin ? 2 : 4,
         },
         style,
       ]}
@@ -66,25 +66,21 @@ export function GlassSurface({
         />
       ) : null}
 
-      {isLightGlass && tint ? (
+      {isStickerSkin && tint ? (
         <LinearGradient
           pointerEvents="none"
-          colors={[`${tint}${theme.dark ? '38' : '55'}`, `${tint}00`]}
+          colors={[`${tint}${theme.dark ? '22' : '16'}`, `${tint}00`]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
 
-      <LinearGradient
+      {!isStickerSkin && <LinearGradient
         pointerEvents="none"
         colors={
           useBlur
             ? [theme.colors.glassTop, theme.colors.glassBottom]
-            : isLightGlass
-              ? theme.dark
-                ? ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.00)']
-                : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.00)']
             : theme.dark
               ? ['rgba(255,255,255,0.06)', 'rgba(255,255,255,0.01)']
               : ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.03)']
@@ -92,7 +88,7 @@ export function GlassSurface({
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
-      />
+      />}
 
       <View style={contentStyle}>{children}</View>
     </View>

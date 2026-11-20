@@ -19,13 +19,13 @@ export interface SkinDefinition {
 export const SKIN_DEFINITIONS: SkinDefinition[] = [
   {
     id: 'glass',
-    name: '轻玻',
-    english: 'Glass Card',
-    tagline: '轻薄磨砂与清晰层级',
-    description: '中性留白、细腻磨砂与少量柔和青色强调。',
+    name: '贴纸',
+    english: 'Sticker Paper',
+    tagline: '手写纸片与拙趣线稿',
+    description: '奶油白底、深墨文字、彩色纸片和少量手绘简笔画。',
     swatches: {
-      light: ['#F6F8F7', '#FFFFFF', '#B8D4D0', '#7798B5'],
-      dark: ['#1D2224', '#292D31', '#83AFAA', '#9A91B5'],
+      light: ['#F9F8F2', '#FFFDF6', '#7FA181', '#D9A890'],
+      dark: ['#20251F', '#343B32', '#ADD09D', '#C99B87'],
     },
   },
   {
@@ -79,8 +79,8 @@ export const SKIN_NATIVE_CHROME: Record<
   >
 > = {
   glass: {
-    light: { overlayColor: '#E6EBF1', symbolColor: '#4E616C', backgroundColor: '#E6EBF1' },
-    dark: { overlayColor: '#293540', symbolColor: '#D1DEE2', backgroundColor: '#1D242C' },
+    light: { overlayColor: '#F3F0E5', symbolColor: '#354236', backgroundColor: '#F9F8F2' },
+    dark: { overlayColor: '#30372E', symbolColor: '#EEEAD9', backgroundColor: '#20251F' },
   },
   vellum: {
     light: { overlayColor: '#FFFCFD', symbolColor: '#6C5E65', backgroundColor: '#F8F3F5' },
@@ -97,7 +97,7 @@ export const SKIN_RADII: Record<
   SkinId,
   { sm: number; md: number; lg: number; xl: number }
 > = {
-  glass: { sm: 16, md: 16, lg: 16, xl: 16 },
+  glass: { sm: 10, md: 14, lg: 17, xl: 20 },
   vellum: { sm: 10, md: 14, lg: 18, xl: 22 },
   mote: { sm: 12, md: 16, lg: 20, xl: 26 },
 };

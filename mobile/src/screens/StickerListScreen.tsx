@@ -1,23 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
   RefreshControl,
-  Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Crypto from 'expo-crypto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ellipsis, NotebookPen, Plus, RefreshCw } from 'lucide-react-native';
+import { NotebookPen, Plus, RefreshCw, Settings2, Sparkles } from 'lucide-react-native';
 import { STICKER_PALETTE } from '@shared/palette';
 import { extractTitle, stripHtml } from '@shared/note';
 import type { Sticker } from '@shared/types';
 import { rankTags } from '@shared/tagFilters';
-import { getActiveStickers, softDeleteSticker, upsertSticker } from '../storage/db';
+import { getActiveStickers, getDeletedStickers, getStickerById, restoreSticker, softDeleteSticker, upsertSticker } from '../storage/db';
+import { reconcileReminders } from '../notifications/reminders';
+import { StickerManageSheet } from '../components/StickerManageSheet';
 import { syncNow } from '../api/syncClient';
+import { semanticSearch } from '../api/aiClient';
 import { ScreenBackground } from '../components/ScreenBackground';
 import { GlassHeader } from '../components/GlassHeader';
 import { GlassSurface } from '../components/GlassSurface';
@@ -33,24 +37,32 @@ import { useAppTheme, useThemeController } from '../theme';
 interface Props {
   onOpenSticker: (id: string) => void;
   onOpenSettings: () => void;
+  paired: boolean;
 }
 
-export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Props) {
+export default function StickerListScreen({ onOpenSticker, onOpenSettings, paired }: Props) {
   const theme = useAppTheme();
-  const { preferences } = useThemeController();
+  const { preferences, updatePreferences } = useThemeController();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
   const { showToast } = useToast();
 
   const [stickers, setStickers] = useState<Sticker[]>([]);
+  const [deleted, setDeleted] = useState<Sticker[]>([]);
+  const [managed, setManaged] = useState<Sticker | null>(null);
+  const [semanticIds, setSemanticIds] = useState<string[] | null>(null);
+  const [semanticBusy, setSemanticBusy] = useState(false);
+  const searchVersion = useRef(0);
   const [search, setSearch] = useState('');
   const [filterKey, setFilterKey] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncBadgeStatus>('synced');
+  const [syncStatus, setSyncStatus] = useState<SyncBadgeStatus>(paired ? 'synced' : 'offline');
 
   const load = useCallback(async () => {
     try {
       setStickers(await getActiveStickers());
+      setDeleted(await getDeletedStickers());
     } catch (error) {
       console.error('加载便签失败:', error);
     } finally {
@@ -60,6 +72,12 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
 
   const runSync = useCallback(
     async (notify: boolean) => {
+      if (!paired) {
+        await load();
+        setSyncStatus('offline');
+        if (notify) showToast({ message: '本机便签已刷新', variant: 'success' });
+        return;
+      }
       setSyncStatus('syncing');
       try {
         await syncNow();
@@ -78,12 +96,13 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
         }
       }
     },
-    [load, showToast]
+    [load, paired, showToast]
   );
 
   useFocusEffect(
     useCallback(() => {
       void load();
+      void reconcileReminders().catch(console.error);
       void runSync(false);
     }, [load, runSync])
   );
@@ -114,6 +133,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
       deletedAt: null,
       windowState: { x: 0, y: 0, width: 240, height: 200 },
       ai: null,
+      tasks: [],
     };
     await upsertSticker(sticker);
     await load();
@@ -124,7 +144,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
     (sticker: Sticker) => {
       Alert.alert(
         '删除便签',
-        `确定要删除「${extractTitle(sticker.content)}」吗？其他设备同步后也会删除。`,
+        `确定要删除「${extractTitle(sticker.content)}」吗？${paired ? '其他设备同步后也会删除。' : '本机可在最近删除中恢复。'}`,
         [
           { text: '取消', style: 'cancel' },
           {
@@ -133,6 +153,8 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
             onPress: async () => {
               try {
                 await softDeleteSticker(sticker.id);
+                setManaged(null);
+                await reconcileReminders();
                 await load();
                 showToast({ message: '已删除', variant: 'success' });
                 void runSync(false);
@@ -145,12 +167,85 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
         ]
       );
     },
-    [load, runSync, showToast]
+    [load, paired, runSync, showToast]
   );
 
   const handleMore = useCallback(() => {
     onOpenSettings();
   }, [onOpenSettings]);
+
+  const performSemanticSearch = useCallback(async (version: number) => {
+    if (version !== searchVersion.current) return;
+    setSemanticBusy(true);
+    try {
+      const candidates = stickers.slice(0, 80).map((item) => ({
+        id: item.id, text: stripHtml(item.content).slice(0, 300),
+      }));
+      const ids = await semanticSearch(search.trim(), candidates);
+      if (version === searchVersion.current) {
+        setFilterKey('all');
+        setSemanticIds(ids);
+      }
+    } catch (error) {
+      showToast({ message: error instanceof Error ? error.message : '语义搜索失败', variant: 'error' });
+    } finally {
+      setSemanticBusy(false);
+    }
+  }, [search, stickers, showToast]);
+
+  const runSemanticSearch = useCallback(() => {
+    if (!search.trim() || semanticBusy) return;
+    if (!preferences.aiEnabled) {
+      Alert.alert('语义搜索未开启', '请先在设置中开启 AI 整理。', [
+        { text: '取消', style: 'cancel' }, { text: '去设置', onPress: onOpenSettings },
+      ]);
+      return;
+    }
+    if (preferences.aiConsentVersion < 3) {
+      const version = searchVersion.current;
+      Alert.alert('语义搜索与隐私',
+        preferences.aiSource === 'device'
+          ? '本次查找会从手机直接把最近最多 80 条便签各前 300 字发送给 DeepSeek，可能产生费用。只有点击查找时才发送。'
+          : '本次查找会经同步服务器把最近最多 80 条便签各前 300 字发送给配置的 AI 服务。只有点击查找时才发送。', [
+          { text: '取消', style: 'cancel' },
+          { text: '同意并查找', onPress: () => {
+             void updatePreferences({ aiConsentVersion: 3 }).then(() => performSemanticSearch(version));
+          } },
+        ]);
+      return;
+    }
+    void performSemanticSearch(searchVersion.current);
+  }, [search, semanticBusy, preferences.aiEnabled, preferences.aiConsentVersion, preferences.aiSource,
+    onOpenSettings, updatePreferences, performSemanticSearch]);
+
+  const handleRestore = useCallback((item: Sticker) => {
+    Alert.alert('恢复便签', `恢复「${extractTitle(item.content)}」？`, [
+      { text: '取消', style: 'cancel' },
+      { text: '恢复', onPress: async () => {
+        try {
+          await restoreSticker(item.id);
+          await reconcileReminders();
+          await load();
+          void runSync(false);
+          showToast({ message: '已恢复', variant: 'success' });
+        } catch {
+          showToast({ message: '恢复失败', variant: 'error' });
+        }
+      } },
+    ]);
+  }, [load, runSync, showToast]);
+
+  const saveManaged = useCallback(async (partial: Partial<Sticker>) => {
+    if (!managed) return;
+    const current = await getStickerById(managed.id);
+    if (!current || current.deletedAt) throw new Error('便签已被删除');
+    await upsertSticker({ ...current, ...partial, updatedAt: new Date().toISOString() });
+    await reconcileReminders().catch(() => {
+      showToast({ message: '便签已保存，但通知安排失败', variant: 'error' });
+    });
+    await load();
+    void runSync(false);
+  }, [managed, load, runSync, showToast]);
 
   const tagOptions = useMemo(
     () => rankTags(stickers),
@@ -163,12 +258,19 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
       ...tagOptions.map((tag) => ({ key: `tag:${tag}`, label: tag })),
       { key: 'pinned', label: '置顶' },
       { key: 'reminder', label: '提醒' },
+      { key: 'trash', label: '最近删除' },
     ],
     [tagOptions]
   );
 
   const filtered = useMemo(() => {
-    let result = stickers;
+    let result = filterKey === 'trash' ? deleted : stickers;
+
+    if (semanticIds !== null && filterKey !== 'trash') {
+      const order = new Map(semanticIds.map((id, index) => [id, index]));
+      return result.filter((item) => order.has(item.id))
+        .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+    }
 
     if (filterKey.startsWith('tag:')) {
       const tag = filterKey.slice(4);
@@ -177,7 +279,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
       result = result.filter((sticker) => sticker.isPinned);
     } else if (filterKey === 'reminder') {
       result = result.filter(
-        (sticker) => sticker.reminder && !sticker.reminderTriggered
+        (sticker) => sticker.reminder && !sticker.reminderTriggered && Date.parse(sticker.reminder) > Date.now()
       );
     }
 
@@ -192,17 +294,21 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
       });
     }
 
-    return result;
-  }, [stickers, filterKey, search]);
+    return filterKey === 'trash' ? result : [...result].sort((a, b) =>
+      Number(b.isPinned) - Number(a.isPinned) || b.updatedAt.localeCompare(a.updatedAt));
+  }, [stickers, deleted, filterKey, search, semanticIds]);
 
   const hasFilter = filterKey !== 'all' || search.trim().length > 0;
   const showGlassComposition = theme.skin === 'glass' && !hasFilter && filtered.length > 0;
+  const twoColumnComposition = showGlassComposition && width >= 340 && fontScale <= 1.15;
   const featuredSticker = showGlassComposition ? filtered[0] : null;
   const listData = featuredSticker ? filtered.slice(1) : filtered;
 
   const clearFilters = useCallback(() => {
     setSearch('');
+    searchVersion.current += 1;
     setFilterKey('all');
+    setSemanticIds(null);
   }, []);
 
   return (
@@ -210,7 +316,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
       <View style={{ flex: 1 }}>
         <GlassHeader
           title="便签"
-          subtitle={`${filtered.length} 条`}
+          subtitle={filterKey === 'trash' ? `${filtered.length} 条已删除` : `${filtered.length} 条`}
           left={
             theme.effects.mascot && preferences.showMascot ? (
               <Mascot size={36} mood={syncStatus === 'syncing' ? 'thinking' : 'idle'} />
@@ -231,8 +337,8 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
           }
           right={
             <>
-              <StatusBadge status={syncStatus} />
-              <Pressable
+              <StatusBadge status={paired ? syncStatus : 'offline'} label={paired ? undefined : '仅本机'} />
+              {paired && <Pressable
                 onPress={() => void runSync(true)}
                 disabled={syncStatus === 'syncing'}
                 hitSlop={8}
@@ -248,7 +354,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
                 ) : (
                   <RefreshCw size={18} color={theme.colors.textMuted} />
                 )}
-              </Pressable>
+              </Pressable>}
               <Pressable
                 onPress={handleMore}
                 hitSlop={8}
@@ -259,7 +365,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
                   justifyContent: 'center',
                 }}
               >
-                <Ellipsis size={19} color={theme.colors.textMuted} />
+                <Settings2 size={19} color={theme.colors.textMuted} />
               </Pressable>
             </>
           }
@@ -272,7 +378,28 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
             gap: theme.spacing.sm + 2,
           }}
         >
-          <SearchField value={search} onChangeText={setSearch} />
+          <SearchField value={search} onChangeText={(value) => {
+            searchVersion.current += 1;
+            setSearch(value);
+            setSemanticIds(null);
+          }} />
+          {!!search.trim() && filterKey !== 'trash' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <Pressable onPress={runSemanticSearch} disabled={semanticBusy}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4 }}>
+                {semanticBusy ? <ActivityIndicator size="small" color={theme.colors.accent} />
+                  : <Sparkles size={14} color={theme.colors.accent} />}
+                <Text style={{ color: theme.colors.accent, fontSize: 12 }}>
+                  {semanticBusy ? '查找中...' : '语义查找'}</Text>
+              </Pressable>
+              {semanticIds !== null && <Pressable onPress={() => setSemanticIds(null)}>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>返回关键词结果</Text>
+              </Pressable>}
+              {semanticIds !== null && <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                {semanticIds.length} 条结果{stickers.length > 80 ? ' · 最近 80 条' : ''}
+              </Text>}
+            </View>
+          )}
           <FilterChips
             options={filterOptions}
             value={filterKey}
@@ -286,28 +413,32 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
           </View>
         ) : (
           <FlatList
-            key={showGlassComposition ? 'glass-grid' : 'standard-list'}
+            key={showGlassComposition ? (twoColumnComposition ? 'glass-grid' : 'glass-single') : 'standard-list'}
             data={listData}
-            numColumns={showGlassComposition ? 2 : 1}
-            columnWrapperStyle={showGlassComposition ? { justifyContent: 'space-between' } : undefined}
+            numColumns={twoColumnComposition ? 2 : 1}
+            columnWrapperStyle={twoColumnComposition ? { justifyContent: 'space-between' } : undefined}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={showGlassComposition ? { width: '48.5%', marginBottom: 12 } : undefined}>
+            renderItem={({ item, index }) => (
+              <View style={showGlassComposition ? {
+                width: twoColumnComposition ? '48%' : '100%',
+                marginBottom: 16,
+                transform: twoColumnComposition && index % 2 === 1 ? [{ translateY: 12 }] : undefined,
+              } : undefined}>
                 <StickerCard
                   sticker={item}
                   variant={showGlassComposition ? 'compact' : 'standard'}
-                  onPress={() => onOpenSticker(item.id)}
-                  onLongPress={() => handleDelete(item)}
+                  onPress={() => filterKey === 'trash' ? handleRestore(item) : onOpenSticker(item.id)}
+                  onLongPress={() => filterKey === 'trash' ? handleRestore(item) : setManaged(item)}
                 />
               </View>
             )}
             ListHeaderComponent={featuredSticker ? (
-              <View style={{ marginBottom: 12 }}>
+              <View style={{ marginBottom: 16 }}>
                 <StickerCard
                   sticker={featuredSticker}
                   variant="featured"
                   onPress={() => onOpenSticker(featuredSticker.id)}
-                  onLongPress={() => handleDelete(featuredSticker)}
+                  onLongPress={() => setManaged(featuredSticker)}
                 />
               </View>
             ) : undefined}
@@ -337,9 +468,9 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
                     <NotebookPen size={24} color={theme.colors.textMuted} />
                   )
                 }
-                title={hasFilter ? '没有匹配的便签' : '还没有便签'}
+                title={filterKey === 'trash' ? '最近没有删除的便签' : hasFilter ? '没有匹配的便签' : '还没有便签'}
                 description={
-                  hasFilter
+                  filterKey === 'trash' ? '删除的便签可在这里恢复' : hasFilter
                     ? '试试调整搜索关键词或筛选条件'
                     : '点击下方加号，随手记下第一张便签'
                 }
@@ -373,7 +504,9 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
           />
         )}
 
-        <Pressable
+        <StickerManageSheet sticker={managed} onClose={() => setManaged(null)}
+          onSave={saveManaged} onDelete={() => { if (managed) { setManaged(null); handleDelete(managed); } }} />
+        {filterKey !== 'trash' && <Pressable
           onPress={() => void handleCreate()}
           style={{ position: 'absolute', right: 20, bottom: insets.bottom + 20 }}
         >
@@ -389,7 +522,7 @@ export default function StickerListScreen({ onOpenSticker, onOpenSettings }: Pro
           >
             <Plus size={24} color={theme.skin === 'glass' ? theme.colors.onAccent : theme.colors.accent} />
           </GlassSurface>
-        </Pressable>
+        </Pressable>}
       </View>
     </ScreenBackground>
   );
